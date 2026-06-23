@@ -1,0 +1,20 @@
+# systemd user service for vox (Linux).
+# Install:
+#   mkdir -p ~/.config/systemd/user
+#   cp install/vox.service ~/.config/systemd/user/vox.service
+#   systemctl --user daemon-reload
+#   systemctl --user enable --now vox
+# Note: needs a graphical session (DISPLAY/WAYLAND_DISPLAY) for hotkeys + paste.
+[Unit]
+Description=vox voice dictation daemon
+After=graphical-session.target
+PartOf=graphical-session.target
+
+[Service]
+Type=simple
+ExecStart=%h/.local/bin/vox run
+Restart=on-failure
+RestartSec=3
+
+[Install]
+WantedBy=graphical-session.target

@@ -1,0 +1,9 @@
+# Core runtime dependencies for vox.
+# (You can also just `pip install .` which reads pyproject.toml.)
+numpy>=1.21
+sounddevice>=0.4.6
+pynput>=1.7.6
+faster-whisper>=1.0.0
+
+# Optional but recommended: robust cross-platform clipboard.
+pyperclip>=1.8

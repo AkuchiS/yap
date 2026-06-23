@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- launchd agent for vox (macOS).
+     Install:
+       cp install/com.vox.dictation.plist ~/Library/LaunchAgents/
+       # edit the vox path below if `which vox` differs
+       launchctl load ~/Library/LaunchAgents/com.vox.dictation.plist
+     Requires Microphone + Accessibility permission for the launching process. -->
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.vox.dictation</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>/usr/local/bin/vox</string>
+        <string>run</string>
+    </array>
+    <key>RunAtLoad</key>
+    <true/>
+    <key>KeepAlive</key>
+    <true/>
+    <key>StandardErrorPath</key>
+    <string>/tmp/vox.log</string>
+    <key>StandardOutPath</key>
+    <string>/tmp/vox.log</string>
+</dict>
+</plist>

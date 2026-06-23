@@ -1,0 +1,46 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "vox-dictation"
+version = "0.1.0"
+description = "Free, offline-first, cross-platform voice dictation — speak anywhere, get text at your cursor."
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.9"
+authors = [{ name = "vox contributors" }]
+keywords = ["dictation", "speech-to-text", "whisper", "voice", "accessibility", "wispr"]
+classifiers = [
+    "Environment :: Console",
+    "Intended Audience :: End Users/Desktop",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Topic :: Multimedia :: Sound/Audio :: Speech",
+]
+
+# Core runtime deps. The local engine pulls faster-whisper; cloud-only users
+# can skip it but it's small enough to keep as default.
+dependencies = [
+    "numpy>=1.21",
+    "sounddevice>=0.4.6",
+    "pynput>=1.7.6",
+    "faster-whisper>=1.0.0",
+]
+
+[project.optional-dependencies]
+# Nicer cross-platform clipboard; native CLIs are used as a fallback otherwise.
+clipboard = ["pyperclip>=1.8"]
+# Everything for the best desktop experience.
+full = ["pyperclip>=1.8"]
+
+[project.scripts]
+vox = "vox.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/vox-dictation/vox"
+Issues = "https://github.com/vox-dictation/vox/issues"
+
+[tool.setuptools.packages.find]
+include = ["vox*"]

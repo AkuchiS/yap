@@ -1,0 +1,12 @@
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+.venv/
+venv/
+.env
+*.log
+# keep the small test clip; ignore any other local audio
+tests/*.wav
+!tests/jfk.wav
