@@ -61,7 +61,8 @@ echo "==> cleaning up previous installs…"
 launchctl unload "$HOME/Library/LaunchAgents/com.yap.dictation.plist" 2>/dev/null || true
 rm -f "$HOME/Library/LaunchAgents/com.yap.dictation.plist"
 pkill -f "Applications/[Yy]ap.app" 2>/dev/null || true
-rm -rf "$HOME/Applications/yap.app" "$HOME/Applications/Yap.app"
+rm -rf "$HOME/Applications/yap.app" "$HOME/Applications/Yap.app" \
+       "/Applications/yap.app" "/Applications/Yap.app" 2>/dev/null || true
 
 # 5. Freeze.
 rm -rf build dist
@@ -72,11 +73,18 @@ pyinstaller packaging/yap.spec --noconfirm
 codesign --force --deep --sign - dist/Yap.app 2>/dev/null || \
   echo "   (codesign skipped — app still runs)"
 
-# 7. Install into ~/Applications.
-DEST="$HOME/Applications"; mkdir -p "$DEST"
-rm -rf "$DEST/Yap.app"; cp -R dist/Yap.app "$DEST/"
+# 7. Install into /Applications (the one Finder's sidebar + Launchpad show) if we
+#    can write there; otherwise fall back to ~/Applications.
+if cp -R dist/Yap.app /Applications/ 2>/dev/null; then
+  DEST="/Applications"
+else
+  DEST="$HOME/Applications"; mkdir -p "$DEST"
+  rm -rf "$DEST/Yap.app"; cp -R dist/Yap.app "$DEST/"
+  echo "   (couldn't write to /Applications — installed to ~/Applications;"
+  echo "    drag Yap.app to /Applications to put it in the main Applications folder)"
+fi
 deactivate || true
 echo
 echo "✓ built $DEST/Yap.app"
-echo "Next: open it, then grant 'Yap' Microphone + Accessibility + Input Monitoring"
-echo "in System Settings → Privacy & Security. It shows as Yap, with your icon."
+echo "Next: open it (double-click in Finder, or 'open $DEST/Yap.app'), then grant"
+echo "'Yap' Microphone + Accessibility + Input Monitoring in Privacy & Security."

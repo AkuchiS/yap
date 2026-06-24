@@ -20,6 +20,19 @@ from . import config
 _ICONS = {"idle": "🎙", "listening": "🔴", "transcribing": "⏳"}
 
 
+def _show_in_dock() -> None:
+    """Force a Dock icon. rumps apps default to 'accessory' (menu-bar only),
+    which hides the Dock icon even with LSUIElement=false — so set the
+    activation policy to Regular explicitly."""
+    try:
+        from AppKit import NSApplication
+
+        # NSApplicationActivationPolicyRegular = 0 (Dock icon + menu bar)
+        NSApplication.sharedApplication().setActivationPolicy_(0)
+    except Exception as e:
+        print(f"yap: could not show Dock icon ({e})", file=sys.stderr)
+
+
 def _set_dock_icon(path: Optional[str]) -> bool:
     """Set the Dock/app icon to a user image at runtime (macOS, via AppKit)."""
     if not path:
@@ -58,6 +71,8 @@ def run(cfg: dict[str, Any]) -> int:
     class YapBar(rumps.App):
         def __init__(self):
             super().__init__("Yap", title=_ICONS["idle"], quit_button=None)
+            if not (cfg.get("app", {}) or {}).get("menubar_only"):
+                _show_in_dock()  # Dock icon + menu bar (default)
             _set_dock_icon(config.icon_path(cfg))
             self.status_item = rumps.MenuItem("Starting…")
             mode = cfg["hotkey"]["mode"]
