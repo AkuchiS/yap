@@ -1,5 +1,10 @@
 # yap — free voice dictation, everywhere
 
+[![Release](https://img.shields.io/github/v/release/AkuchiS/yap?color=8A2BE2)](https://github.com/AkuchiS/yap/releases/latest)
+[![Downloads](https://img.shields.io/github/downloads/AkuchiS/yap/total?color=8A2BE2)](https://github.com/AkuchiS/yap/releases)
+[![License: MIT](https://img.shields.io/github/license/AkuchiS/yap?color=8A2BE2)](LICENSE)
+![Platforms](https://img.shields.io/badge/platform-macOS%20%7C%20Windows%20%7C%20Linux-8A2BE2)
+
 Hold a hotkey, speak, and your words appear at the cursor **in any app** — editor,
 browser, chat, terminal. A free, open-source, offline-first alternative to
 Wispr Flow / SuperWhisper.
