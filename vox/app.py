@@ -42,37 +42,47 @@ class App:
 
         self._record_thread = threading.Thread(target=_rec, daemon=True)
         self._record_thread.start()
-        if self.echo:
-            print("● recording...", file=sys.stderr)
+        self._log("● recording… (speak now, release to transcribe)")
 
     def on_stop(self):
         self._stop_event.set()
+        self._log("◼ stopped — processing…")
         # process off the hotkey thread so the listener stays responsive
         threading.Thread(target=self._finish, daemon=True).start()
+
+    def _log(self, msg: str) -> None:
+        # flush so stage markers appear immediately, even through a pipe
+        print(msg, file=sys.stderr, flush=True)
 
     def _finish(self):
         try:
             if self._record_thread is not None:
                 self._record_thread.join()
             audio = self._audio
-            if audio is None or audio.shape[0] < self.samplerate * 0.2:
-                if self.echo:
-                    print("… too short, ignored", file=sys.stderr)
+            if audio is None:
+                self._log("… no audio captured (mic blocked or device busy?)")
                 return
+            secs = audio.shape[0] / self.samplerate
+            if audio.shape[0] < self.samplerate * 0.2:
+                self._log(f"… too short ({secs:.2f}s), ignored")
+                return
+            self._log(f"… transcribing {secs:.1f}s of audio…")
             t0 = time.time()
             text = self.engine.transcribe_array(audio, self.samplerate)
             text = cleanup.maybe_clean(text, self.cfg)
             dt = time.time() - t0
             if not text:
-                if self.echo:
-                    print("… (no speech detected)", file=sys.stderr)
+                self._log(f"… no speech detected ({dt:.1f}s stt) — try speaking louder/closer")
                 return
-            if self.echo:
-                secs = audio.shape[0] / self.samplerate
-                print(f'✓ [{secs:.1f}s audio, {dt:.1f}s stt] "{text}"', file=sys.stderr)
+            self._log(f'✓ [{secs:.1f}s audio, {dt:.1f}s stt] "{text}"')
+            self._log("… injecting text at cursor…")
             self.injector.inject(text)
+            self._log("✓ done")
         except Exception as e:
-            print(f"vox: error during transcription: {e}", file=sys.stderr)
+            import traceback
+
+            self._log(f"vox: error during transcription: {e}")
+            traceback.print_exc()
         finally:
             self._busy.release()
 
