@@ -1,0 +1,7 @@
+# Shows a "Sponsor" button on the GitHub repo.
+# Enable GitHub Sponsors at https://github.com/sponsors, or swap in another
+# platform below (uncomment the one you use, delete the rest).
+github: [AkuchiS]
+# ko_fi: your-ko-fi-name
+# buy_me_a_coffee: your-bmac-name
+# custom: ["https://www.paypal.me/your-handle"]

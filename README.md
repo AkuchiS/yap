@@ -269,6 +269,16 @@ hotkey, keeps nothing on disk, and phones no one home. Cloud engines and the
 optional cleanup pass are strictly opt-in and only ever talk to the endpoint
 *you* configure.
 
+## Support
+
+yap is free and open source — built by a retired veteran, in his spare time,
+because dictation shouldn't be locked behind a subscription. If it saves you
+time, a small donation helps cover real costs (like Apple's $99/yr signing fee
+for warning-free Mac builds) and keeps it moving. Totally optional — yap is, and
+always will be, free.
+
+❤️ [**Sponsor on GitHub**](https://github.com/sponsors/AkuchiS)
+
 ## License
 
 MIT — see [LICENSE](LICENSE). Built on

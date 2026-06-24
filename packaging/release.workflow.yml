@@ -1,0 +1,67 @@
+name: Build apps
+
+# Build standalone apps for macOS, Windows, and Linux. Run manually any time
+# (Actions tab → Run workflow), or push a tag like v0.1.0 to also publish a
+# GitHub Release with the three downloadable builds attached.
+on:
+  workflow_dispatch:
+  push:
+    tags: ["v*"]
+
+jobs:
+  macos:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - name: Build Yap.app
+        run: |
+          chmod +x packaging/build_macos.sh
+          YAP_BUILD_PY=python3 ./packaging/build_macos.sh
+      - name: Zip
+        run: cd dist && ditto -c -k --keepParent Yap.app ../Yap-macOS.zip
+      - uses: actions/upload-artifact@v4
+        with: { name: Yap-macOS, path: Yap-macOS.zip }
+
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - name: Build yap.exe
+        run: powershell -ExecutionPolicy Bypass -File .\packaging\build_windows.ps1
+      - name: Zip
+        run: Compress-Archive -Path dist\yap\* -DestinationPath yap-Windows.zip
+      - uses: actions/upload-artifact@v4
+        with: { name: yap-Windows, path: yap-Windows.zip }
+
+  linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - run: sudo apt-get update && sudo apt-get install -y libportaudio2
+      - name: Build
+        run: |
+          chmod +x packaging/build_linux.sh
+          ./packaging/build_linux.sh
+      - run: tar czf yap-Linux.tar.gz -C dist yap
+      - uses: actions/upload-artifact@v4
+        with: { name: yap-Linux, path: yap-Linux.tar.gz }
+
+  release:
+    needs: [macos, windows, linux]
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/')
+    permissions: { contents: write }
+    steps:
+      - uses: actions/download-artifact@v4
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            Yap-macOS/Yap-macOS.zip
+            yap-Windows/yap-Windows.zip
+            yap-Linux/yap-Linux.tar.gz

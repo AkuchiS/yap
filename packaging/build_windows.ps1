@@ -24,9 +24,12 @@ $vpy = Join-Path $venv "Scripts\python.exe"
 Write-Host "==> installing yap + build tools..."
 & $pip install ".[full]" pyinstaller pillow | Out-Null
 
-# Convert icon.png -> yap.ico for the exe.
-$iconPng = if ($args.Count -ge 1) { $args[0] } else {
-  Join-Path $env:APPDATA "yap\icon.png" }
+# Convert icon.png -> yap.ico for the exe. Prefer the icon committed in the repo
+# (self-contained builds), then an explicit arg, then the config dir.
+$repoIcon = Join-Path $root "packaging\yap-icon.png"
+$iconPng = if ($args.Count -ge 1) { $args[0] }
+           elseif (Test-Path $repoIcon) { $repoIcon }
+           else { Join-Path $env:APPDATA "yap\icon.png" }
 if (Test-Path $iconPng) {
   $ico = Join-Path $env:TEMP "yap.ico"
   & $vpy -c "from PIL import Image; Image.open(r'$iconPng').save(r'$ico', sizes=[(16,16),(32,32),(48,48),(64,64),(128,128),(256,256)])"
