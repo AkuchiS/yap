@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
 from typing import Any
 
@@ -84,6 +85,52 @@ def _cmd_devices(_args) -> int:
 
     print(list_devices())
     return 0
+
+
+def _bundled_sample() -> str:
+    """Path to the built-in self-test clip (works frozen via _MEIPASS or in-repo)."""
+    base = getattr(sys, "_MEIPASS", None)
+    if base:
+        p = os.path.join(base, "jfk.wav")
+        if os.path.exists(p):
+            return p
+    here = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    return os.path.join(here, "tests", "jfk.wav")
+
+
+def _cmd_selftest(args) -> int:
+    """Transcribe a known clip via the array path — verifies the STT stack
+    (no microphone, GUI, or audio-decode libs needed). Great post-freeze check."""
+    import time
+    import wave
+
+    import numpy as np
+
+    path = args.file or _bundled_sample()
+    with wave.open(path, "rb") as w:
+        sr, ch, sw, n = (w.getframerate(), w.getnchannels(),
+                         w.getsampwidth(), w.getnframes())
+        raw = w.readframes(n)
+    dtype = {1: np.int8, 2: "<i2", 4: "<i4"}.get(sw, "<i2")
+    audio = np.frombuffer(raw, dtype=dtype).astype(np.float32)
+    audio /= float(1 << (8 * sw - 1))
+    if ch > 1:
+        audio = audio.reshape(-1, ch).mean(axis=1)
+
+    cfg = config.load()
+    if args.engine:
+        cfg["engine"] = args.engine
+    from .stt import build_engine
+
+    engine = build_engine(cfg)
+    t0 = time.time()
+    text = engine.transcribe_array(audio, sr)
+    dt = time.time() - t0
+    expect = "fellow americans"
+    ok = expect in text.lower()
+    print(f'selftest: "{text}"')
+    print(f"  [{dt:.1f}s, engine={engine.name}]  {'PASS ✓' if ok else 'CHECK ⚠ (unexpected text)'}")
+    return 0 if ok else 1
 
 
 def _cmd_doctor(args) -> int:
@@ -208,6 +255,11 @@ def build_parser() -> argparse.ArgumentParser:
 
     pd = sub.add_parser("devices", help="list microphone input devices")
     pd.set_defaults(func=_cmd_devices)
+
+    ps = sub.add_parser("selftest", help="verify the STT engine on a known clip")
+    ps.add_argument("--file", help="a 16-bit PCM wav to test (default: built-in clip)")
+    ps.add_argument("--engine", choices=["local", "cloud"], help="override engine")
+    ps.set_defaults(func=_cmd_selftest)
 
     pv = sub.add_parser("vocab", help="teach yap your words (names, jargon, fixes)")
     pv.add_argument("action", choices=["list", "add", "remove", "fix"])

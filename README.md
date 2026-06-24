@@ -164,21 +164,36 @@ Local model sizes (set `local.model`): `auto` *(default — adapts to your
 machine)*, `tiny.en`, `base.en`, `small`, `medium`, `large-v3`. Bigger = more
 accurate, slower, more RAM.
 
-## Make it a real Mac app
+## Build a real, standalone app
 
-Turn yap into a proper double-click `yap.app` — Dock icon baked in, its own
-entry in Privacy & Security (so it doesn't borrow Terminal's permissions), and
-optional launch-at-login:
+For a proper app that shows **yap + your icon** in macOS permission dialogs (not
+"Python") and needs no separate Python install, freeze it with PyInstaller. The
+app bundles its own interpreter + the Whisper stack.
 
 ```bash
-yap icon ~/Downloads/yap-icon.png   # (optional) your custom icon, OS-shaped
-yap bundle --login                  # builds ~/Applications/yap.app, starts at login
-open ~/Applications/yap.app
+yap icon ~/Downloads/yap-icon.png        # (optional) your icon first
+
+# macOS  → ~/Applications/yap.app
+./packaging/build_macos.sh
+
+# Linux  → dist/yap/  (sudo apt install libportaudio2 for the mic)
+./packaging/build_linux.sh
+
+# Windows → dist\yap\yap.exe
+powershell -ExecutionPolicy Bypass -File .\packaging\build_windows.ps1
 ```
 
-Then grant the **new** "yap" app Microphone + Accessibility + Input Monitoring in
-*System Settings → Privacy & Security*. Because the app is built locally,
-Gatekeeper won't quarantine it. Add `--menubar-only` to hide the Dock icon.
+Tips: set `YAP_BUILD_PY=python3.12` to freeze with a specific (mature) Python;
+`YAP_MENUBAR_ONLY=1` hides the macOS Dock icon. After building on macOS, open the
+app and grant **yap** Microphone + Accessibility + Input Monitoring — now shown
+under the yap name and icon. Verify any build with `yap selftest`.
+
+### Quick wrapper app (no freeze)
+
+If you just want a Dock launcher fast and don't mind that permissions show under
+"Python", `yap bundle --login` makes a lightweight `~/Applications/yap.app` that
+calls your installed yap. Good for personal use; the frozen build above is the
+one to ship.
 
 ## Run it on login (other platforms)
 
