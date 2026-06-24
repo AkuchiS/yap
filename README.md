@@ -225,6 +225,26 @@ one to ship.
 
 See [`install/`](install/) for ready-made helpers.
 
+## macOS permissions (read this if the hotkey "does nothing")
+
+yap needs two macOS permissions: **Input Monitoring** (to see your hotkey) and
+**Accessibility** (to type at your cursor). macOS doesn't always prompt — so the
+reliable way is to add yap **by hand**:
+
+1. System Settings → Privacy & Security → **Input Monitoring** → click **`+`** →
+   press **⌘⇧G**, enter `/Applications/Yap.app`, **Add**, toggle it **on**.
+2. Do the same under **Accessibility**.
+3. **Quit yap fully and reopen it** — grants only take effect on relaunch.
+
+Running the CLI (`yap run`) from a terminal instead of the app? Grant **your
+terminal app** those two permissions rather than Yap.app.
+
+**Rebuilt the app and it stopped working?** An unsigned app's identity changes
+every build, so old grants go stale and show "on" but don't apply. Reset and
+re-add: `tccutil reset All com.yap.dictation`, then repeat the steps above. (A
+single downloaded build doesn't have this problem — it's only an issue when you
+rebuild repeatedly.)
+
 ## Privacy
 
 With the default `local` engine, yap is **100% offline** — disconnect your
