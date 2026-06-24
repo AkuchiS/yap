@@ -20,6 +20,41 @@ from . import config
 _ICONS = {"idle": "🎙", "listening": "🔴", "transcribing": "⏳"}
 
 
+def _request_permissions() -> None:
+    """Proactively ask macOS for the permissions the hotkey needs, so a freshly
+    built Yap.app *appears* in System Settings → Privacy & Security and the user
+    can grant it. Without this the app never asks, never lists, can't be granted.
+
+      • Accessibility  — needed to synthesize the paste keystroke. Prompting
+        registers the app and shows the "control your computer" dialog.
+      • Input Monitoring — needed to watch the hotkey. IOHIDRequestAccess with
+        kIOHIDRequestTypeListenEvent registers + prompts for it.
+    """
+    # Accessibility (ApplicationServices / HIServices via pyobjc)
+    try:
+        try:
+            from ApplicationServices import (  # type: ignore
+                AXIsProcessTrustedWithOptions, kAXTrustedCheckOptionPrompt)
+        except Exception:
+            from HIServices import (  # type: ignore
+                AXIsProcessTrustedWithOptions, kAXTrustedCheckOptionPrompt)
+        AXIsProcessTrustedWithOptions({kAXTrustedCheckOptionPrompt: True})
+    except Exception as e:
+        print(f"yap: could not request Accessibility ({e})", file=sys.stderr)
+
+    # Input Monitoring (IOKit IOHIDRequestAccess via ctypes — no extra dep)
+    try:
+        import ctypes
+
+        iokit = ctypes.cdll.LoadLibrary(
+            "/System/Library/Frameworks/IOKit.framework/IOKit")
+        iokit.IOHIDRequestAccess.restype = ctypes.c_bool
+        iokit.IOHIDRequestAccess.argtypes = [ctypes.c_uint32]
+        iokit.IOHIDRequestAccess(1)  # kIOHIDRequestTypeListenEvent
+    except Exception as e:
+        print(f"yap: could not request Input Monitoring ({e})", file=sys.stderr)
+
+
 def _show_in_dock() -> None:
     """Force a Dock icon. rumps apps default to 'accessory' (menu-bar only),
     which hides the Dock icon even with LSUIElement=false — so set the
@@ -65,6 +100,9 @@ def run(cfg: dict[str, Any]) -> int:
 
     from .app import App
     from .hotkey import describe_mode
+
+    # Make the app appear in (and prompt for) Privacy & Security on launch.
+    _request_permissions()
 
     logic = App(cfg)
 

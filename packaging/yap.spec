@@ -45,10 +45,13 @@ for pkg in ("faster_whisper", "ctranslate2", "onnxruntime", "tokenizers"):
 for pkg in ("av", "sounddevice", "pynput", "pyperclip", "rumps", "PIL", "numpy"):
     _collect(pkg)
 
-# pyobjc bits the menu-bar app needs on macOS (rumps' deps).
+# pyobjc bits the menu-bar app needs on macOS (rumps' deps + permission APIs).
 if sys.platform == "darwin":
     hiddenimports += ["objc", "Foundation", "AppKit", "PyObjCTools",
-                      "CoreFoundation", "Quartz"]
+                      "CoreFoundation", "Quartz", "ApplicationServices",
+                      "HIServices"]
+    for pkg in ("ApplicationServices",):
+        _collect(pkg)
 
 # Built-in self-test clip so `yap selftest` works inside the frozen app.
 sample = os.path.join(PROJECT, "tests", "jfk.wav")

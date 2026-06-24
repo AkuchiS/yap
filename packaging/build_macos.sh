@@ -26,10 +26,18 @@ VENV="$ROOT/.build-venv"
 rm -rf "$VENV"; "$PY" -m venv "$VENV"; . "$VENV/bin/activate"
 pip install -U pip wheel >/dev/null
 echo "==> installing yap + build tools (this pulls the Whisper stack)…"
-pip install ".[full]" pyinstaller pillow >/dev/null
+pip install ".[full]" pyinstaller pillow pyobjc-framework-ApplicationServices >/dev/null
 
 # 3. Turn your icon into a multi-resolution .icns (shaped to the macOS squircle).
-ICON_SRC="${1:-$HOME/Library/Application Support/yap/icon.png}"
+#    Default to the icon committed in the repo so builds are self-contained;
+#    fall back to ~/Downloads or the config dir; or pass a path as arg 1.
+ICON_SRC="${1:-}"
+if [ -z "$ICON_SRC" ]; then
+  for c in "$ROOT/packaging/yap-icon.png" "$HOME/Downloads/yap-icon.png" \
+           "$HOME/Library/Application Support/yap/icon.png"; do
+    [ -f "$c" ] && { ICON_SRC="$c"; break; }
+  done
+fi
 if [ -f "$ICON_SRC" ]; then
   WORK="$(mktemp -d)"; ROUNDED="$WORK/rounded.png"
   # Round to the squircle (transparent corners + inset) so it sits like a native
