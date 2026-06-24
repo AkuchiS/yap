@@ -27,15 +27,21 @@ from . import __version__, config
 BUNDLE_ID = "com.yap.dictation"
 
 # The app's executable: find the installed `yap` even with Finder's minimal PATH,
-# then run the menu-bar app. Falls back to the pipx venv interpreter.
+# then run the menu-bar app. Logs to ~/Library/Logs/yap-app.log so launch
+# failures are diagnosable. Falls back to the pipx venv interpreter.
 _LAUNCHER = r"""#!/bin/bash
+mkdir -p "$HOME/Library/Logs"
+LOG="$HOME/Library/Logs/yap-app.log"
+exec >>"$LOG" 2>&1
+echo "=== yap.app launch: $(date) ==="
 export PATH="$HOME/.local/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:$PATH"
 for cand in "$HOME/.local/bin/yap" "/opt/homebrew/bin/yap" "/usr/local/bin/yap" "$(command -v yap 2>/dev/null)"; do
-  if [ -n "$cand" ] && [ -x "$cand" ]; then exec "$cand" app; fi
+  if [ -n "$cand" ] && [ -x "$cand" ]; then echo "launching: $cand app"; exec "$cand" app; fi
 done
 for py in "$HOME/.local/pipx/venvs/yap-dictation/bin/python" "${PIPX_HOME:-$HOME/.local/pipx}/venvs/yap-dictation/bin/python"; do
-  if [ -x "$py" ]; then exec "$py" -m yap app; fi
+  if [ -x "$py" ]; then echo "launching: $py -m yap app"; exec "$py" -m yap app; fi
 done
+echo "ERROR: could not find an installed 'yap' (PATH or pipx venv)."
 osascript -e 'display alert "yap is not installed" message "Install it first:  pipx install yap-dictation"'
 exit 1
 """
@@ -140,6 +146,16 @@ def build(cfg: dict, dest_dir: str, login: bool = False,
     launcher = macos_dir / "yap"
     launcher.write_text(_LAUNCHER)
     launcher.chmod(0o755)
+
+    # Ad-hoc sign so the bundle has a stable identity and launches cleanly.
+    # (Note: the running process is still your system Python, so Privacy &
+    # Security attributes permissions to "Python", not "yap" — a self-contained
+    # build is needed for a yap-named permission entry. See README.)
+    try:
+        subprocess.run(["codesign", "--force", "--deep", "--sign", "-", str(app)],
+                       capture_output=True)
+    except Exception:
+        pass
 
     login_plist = _install_login_agent(app) if login else None
 
