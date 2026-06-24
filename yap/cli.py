@@ -1,4 +1,4 @@
-"""Command-line interface for vox."""
+"""Command-line interface for yap."""
 
 from __future__ import annotations
 
@@ -70,7 +70,7 @@ def _cmd_vocab(args) -> int:
         return 0
     if args.action == "fix":
         if len(args.words) != 2:
-            print("usage: vox vocab fix <heard> <wanted>", file=sys.stderr)
+            print("usage: yap vocab fix <heard> <wanted>", file=sys.stderr)
             return 2
         repl[args.words[0]] = args.words[1]
         config.save(cfg)
@@ -101,10 +101,10 @@ def _cmd_app(_args) -> int:
 def _cmd_hardware(_args) -> int:
     from . import hardware
 
-    print("vox hardware:")
+    print("yap hardware:")
     print(hardware.summary())
     print("\nUsing model 'auto' adapts to this. Pin one with: "
-          "vox config set local.model '\"small\"'")
+          "yap config set local.model '\"small\"'")
     return 0
 
 
@@ -117,7 +117,7 @@ def _cmd_config(args) -> int:
         print(json.dumps(config.load(), indent=2))
     elif args.action == "set":
         if not args.key or args.value is None:
-            print("usage: vox config set <dotted.key> <json-value>", file=sys.stderr)
+            print("usage: yap config set <dotted.key> <json-value>", file=sys.stderr)
             return 2
         cfg = config.load()
         _set_dotted(cfg, args.key, _parse_value(args.value))
@@ -142,16 +142,16 @@ def _set_dotted(d: dict, dotted: str, value: Any) -> None:
     for k in keys[:-1]:
         cur = cur.setdefault(k, {})
         if not isinstance(cur, dict):
-            raise SystemExit(f"vox: {dotted}: {k} is not a section")
+            raise SystemExit(f"yap: {dotted}: {k} is not a section")
     cur[keys[-1]] = value
 
 
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
-        prog="vox",
+        prog="yap",
         description="Free, offline-first voice dictation — speak anywhere, get text at your cursor.",
     )
-    p.add_argument("-V", "--version", action="version", version=f"vox {__version__}")
+    p.add_argument("-V", "--version", action="version", version=f"yap {__version__}")
     sub = p.add_subparsers(dest="cmd", required=True)
 
     pr = sub.add_parser("run", help="start the dictation daemon (hotkey -> text)")
@@ -170,7 +170,7 @@ def build_parser() -> argparse.ArgumentParser:
     pd = sub.add_parser("devices", help="list microphone input devices")
     pd.set_defaults(func=_cmd_devices)
 
-    pv = sub.add_parser("vocab", help="teach vox your words (names, jargon, fixes)")
+    pv = sub.add_parser("vocab", help="teach yap your words (names, jargon, fixes)")
     pv.add_argument("action", choices=["list", "add", "remove", "fix"])
     pv.add_argument("words", nargs="*", help="word(s); for 'fix': <heard> <wanted>")
     pv.set_defaults(func=_cmd_vocab)
@@ -205,10 +205,10 @@ def main(argv: list[str] | None = None) -> int:
     except KeyboardInterrupt:
         return 130
     except FileNotFoundError as e:
-        print(f"vox: file not found: {e}", file=sys.stderr)
+        print(f"yap: file not found: {e}", file=sys.stderr)
         return 1
     except Exception as e:
-        print(f"vox: error: {e}", file=sys.stderr)
+        print(f"yap: error: {e}", file=sys.stderr)
         return 1
 
 

@@ -1,4 +1,4 @@
-# Core runtime dependencies for vox.
+# Core runtime dependencies for yap.
 # (You can also just `pip install .` which reads pyproject.toml.)
 numpy>=1.21
 sounddevice>=0.4.6

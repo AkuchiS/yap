@@ -1,4 +1,4 @@
-"""`vox doctor` — diagnose the things that actually break dictation:
+"""`yap doctor` — diagnose the things that actually break dictation:
 permissions (macOS trust), whether the hotkey is seen, mic capture, clipboard.
 
 This is the first thing to run when "nothing happens". It needs no GUI focus —
@@ -90,7 +90,7 @@ def keytest(cfg: dict[str, Any], seconds: int = 12) -> None:
         pressed.update(s)
         print(f"  press    {str(k):22} sigs={sorted(s)}")
         if expected.issubset(pressed):
-            print("  ✓✓ HOTKEY MATCH — in `vox run`, recording would START here.")
+            print("  ✓✓ HOTKEY MATCH — in `yap run`, recording would START here.")
 
     def on_release(k):
         s = sigs(k)
@@ -126,7 +126,7 @@ def mictest(cfg: dict[str, Any]) -> None:
         peak = float(abs(rec).max())
         if peak < 1e-4:
             print(f"  ⚠ captured silence (peak {peak:.5f}) — mic permission, muted, or "
-                  "wrong input device. Run `vox devices`.")
+                  "wrong input device. Run `yap devices`.")
         else:
             print(f"  ✓ mic OK — peak amplitude {peak:.3f}")
     except Exception as e:
@@ -136,16 +136,16 @@ def mictest(cfg: dict[str, Any]) -> None:
 def cliptest() -> None:
     from .inject import clipboard_get, clipboard_set
 
-    if clipboard_set("vox-doctor-probe"):
+    if clipboard_set("yap-doctor-probe"):
         got = clipboard_get()
-        ok = (got == "vox-doctor-probe")
+        ok = (got == "yap-doctor-probe")
         print(f"  {'✓' if ok else '⚠'} clipboard set/get {'OK' if ok else f'mismatch: {got!r}'}")
     else:
         print("  ⚠ clipboard set failed — install pyperclip or xclip/wl-clipboard.")
 
 
 def run(cfg: dict[str, Any], prompt: bool, seconds: int) -> int:
-    print(f"vox doctor — {platform.platform()}")
+    print(f"yap doctor — {platform.platform()}")
     print(f"  python : {sys.executable}")
     print(f"  engine : {cfg.get('engine')}   hotkey: {cfg['hotkey']['combo']} "
           f"({cfg['hotkey']['mode']})")
@@ -164,5 +164,5 @@ def run(cfg: dict[str, Any], prompt: bool, seconds: int) -> int:
 
     print("\nDone. The #1 fix when section 2 saw no keys: add the app you ran this")
     print("from to Accessibility AND Input Monitoring, then Cmd+Q and reopen it.")
-    print("Tip: `vox doctor --prompt` pops the macOS 'allow control' dialog for you.")
+    print("Tip: `yap doctor --prompt` pops the macOS 'allow control' dialog for you.")
     return 0

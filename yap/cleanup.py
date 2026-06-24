@@ -23,7 +23,7 @@ def maybe_clean(text: str, cfg: dict[str, Any]) -> str:
     api_key = os.environ.get(cc.get("api_key_env", "") or "")
     if not api_key:
         print(
-            f"vox: cleanup enabled but ${cc.get('api_key_env')} is not set; "
+            f"yap: cleanup enabled but ${cc.get('api_key_env')} is not set; "
             "using raw transcript.",
             file=sys.stderr,
         )
@@ -31,7 +31,7 @@ def maybe_clean(text: str, cfg: dict[str, Any]) -> str:
     try:
         return _chat(text, cc, api_key)
     except Exception as e:  # fail open — never lose the user's words
-        print(f"vox: cleanup failed ({e}); using raw transcript.", file=sys.stderr)
+        print(f"yap: cleanup failed ({e}); using raw transcript.", file=sys.stderr)
         return text
 
 
@@ -53,8 +53,8 @@ def _chat(text: str, cc: dict[str, Any], api_key: str) -> str:
             "Authorization": f"Bearer {api_key}",
             "Content-Type": "application/json",
             # Optional OpenRouter attribution headers (harmless elsewhere):
-            "HTTP-Referer": "https://github.com/vox-dictation/vox",
-            "X-Title": "vox",
+            "HTTP-Referer": "https://github.com/yap-dictation/yap",
+            "X-Title": "yap",
         },
     )
     try:

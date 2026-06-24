@@ -65,12 +65,12 @@ class CloudWhisperEngine:
         self.prompt = prompt  # vocabulary biasing -> transcription "prompt" field
         self.base_url = cfg.get("base_url", "https://api.groq.com/openai/v1").rstrip("/")
         self.model = cfg.get("model", "whisper-large-v3-turbo")
-        self.api_key = os.environ.get(cfg.get("api_key_env", "VOX_API_KEY") or "")
+        self.api_key = os.environ.get(cfg.get("api_key_env", "YAP_API_KEY") or "")
 
     def warmup(self) -> None:
         if not self.api_key:
             print(
-                f"vox: warning: cloud engine selected but ${self.cfg.get('api_key_env')} "
+                f"yap: warning: cloud engine selected but ${self.cfg.get('api_key_env')} "
                 "is not set.",
                 file=sys.stderr,
             )
@@ -79,7 +79,7 @@ class CloudWhisperEngine:
         if not self.api_key:
             raise RuntimeError(
                 f"No API key: set the ${self.cfg.get('api_key_env')} environment variable, "
-                "or switch to the local engine (`vox config set engine local`)."
+                "or switch to the local engine (`yap config set engine local`)."
             )
         fields = {"model": self.model}
         language: Optional[str] = self.cfg.get("language")

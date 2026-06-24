@@ -32,7 +32,7 @@ class Recorder:
         for idx, dev in enumerate(sd.query_devices()):
             if dev["max_input_channels"] > 0 and str(self.device).lower() in dev["name"].lower():
                 return idx
-        print(f"vox: input device {self.device!r} not found; using default.", file=sys.stderr)
+        print(f"yap: input device {self.device!r} not found; using default.", file=sys.stderr)
         return None
 
     def record_until(self, stop: threading.Event) -> Optional["np.ndarray"]:
@@ -43,7 +43,7 @@ class Recorder:
 
         def callback(indata, _frames, _time, status):
             if status:
-                print(f"vox: audio status: {status}", file=sys.stderr)
+                print(f"yap: audio status: {status}", file=sys.stderr)
             q.put(indata.copy())
 
         chunks: list[np.ndarray] = []
@@ -64,7 +64,7 @@ class Recorder:
                 chunks.append(chunk)
                 total += chunk.shape[0]
                 if total >= max_frames:
-                    print("vox: hit max recording length; stopping.", file=sys.stderr)
+                    print("yap: hit max recording length; stopping.", file=sys.stderr)
                     break
         # drain anything still queued
         while True:
@@ -81,7 +81,7 @@ class Recorder:
 
 
 def list_devices() -> str:
-    """Human-readable list of input devices (for `vox devices`)."""
+    """Human-readable list of input devices (for `yap devices`)."""
     try:
         import sounddevice as sd
     except Exception as e:  # pragma: no cover - depends on host

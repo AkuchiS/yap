@@ -129,6 +129,6 @@ def combo_warning(combo: str) -> str | None:
         return (
             "The Fn/🌐 key can't be captured (it emits no real keypress, just a "
             "hardware flag). Try '<alt_r>' (Right Option), '<cmd_r>' (Right ⌘), "
-            "or '<f9>' instead:  vox config set hotkey.combo '\"<alt_r>\"'"
+            "or '<f9>' instead:  yap config set hotkey.combo '\"<alt_r>\"'"
         )
     return None

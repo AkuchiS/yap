@@ -1,10 +1,10 @@
-# vox installer for Windows (PowerShell).
+# yap installer for Windows (PowerShell).
 #   powershell -ExecutionPolicy Bypass -File .\install\install.ps1
 $ErrorActionPreference = "Stop"
 
 $root = Resolve-Path (Join-Path $PSScriptRoot "..")
 Set-Location $root
-Write-Host "vox installer"
+Write-Host "yap installer"
 Write-Host "  project: $root"
 
 $py = Get-Command python -ErrorAction SilentlyContinue
@@ -15,5 +15,5 @@ Write-Host "  installing with pip..."
 & $py.Path -m pip install --user ".[full]"
 
 Write-Host ""
-Write-Host "Done. Try:  vox run"
-Write-Host "Tip: add a shortcut to 'vox run' in your Startup folder to launch on login."
+Write-Host "Done. Try:  yap run"
+Write-Host "Tip: add a shortcut to 'yap run' in your Startup folder to launch on login."

@@ -1,4 +1,4 @@
-"""Fast, hardware-free tests for vox's pure logic.
+"""Fast, hardware-free tests for yap's pure logic.
 
 Run:  python -m pytest    (or just `python tests/test_core.py`)
 """
@@ -12,11 +12,11 @@ import numpy as np
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from vox import config
-from vox.cli import _parse_value, _set_dotted
-from vox.stt.cloud_openai import _array_to_wav_bytes, _multipart
-from vox.stt.local_whisper import _resample_to_16k
-from vox.text import apply_replacements, build_prompt
+from yap import config
+from yap.cli import _parse_value, _set_dotted
+from yap.stt.cloud_openai import _array_to_wav_bytes, _multipart
+from yap.stt.local_whisper import _resample_to_16k
+from yap.text import apply_replacements, build_prompt
 
 
 def test_config_deep_merge_preserves_defaults():
@@ -71,7 +71,7 @@ def test_multipart_has_boundary_and_file_part():
 
 
 def test_hardware_model_tiers():
-    from vox.hardware import recommend_model
+    from yap.hardware import recommend_model
 
     def info(**kw):
         base = {"ram_gb": 16, "cores": 8, "intel_mac": False,
@@ -92,7 +92,7 @@ def test_integration_state_file(tmp_path=None):
 
     d = tmp_path or tempfile.mkdtemp()
     sf = os.path.join(str(d), "state.json")
-    from vox.integration import Integration
+    from yap.integration import Integration
 
     ig = Integration({"integration": {"state_file": sf}})
     ig.record_started()

@@ -4,8 +4,8 @@ A small icon in the menu bar that flips between idle / listening / transcribing,
 plus quick toggles for engine and verbosity. The dictation engine runs in the
 background; rumps owns the main loop.
 
-Requires `rumps` (macOS only):  pip install "vox-dictation[macos]"
-Launch with:  vox app
+Requires `rumps` (macOS only):  pip install "yap-dictation[macos]"
+Launch with:  yap app
 """
 
 from __future__ import annotations
@@ -20,14 +20,14 @@ _ICONS = {"idle": "🎙", "listening": "🔴", "transcribing": "⏳"}
 
 def run(cfg: dict[str, Any]) -> int:
     if sys.platform != "darwin":
-        print("vox app: the menu-bar app is macOS-only for now. Use `vox run` "
+        print("yap app: the menu-bar app is macOS-only for now. Use `yap run` "
               "elsewhere (a cross-platform tray is on the roadmap).", file=sys.stderr)
         return 2
     try:
         import rumps
     except Exception:
-        print("vox app: needs rumps. Install it:\n"
-              "  pip install rumps    (or: pipx inject vox-dictation rumps)",
+        print("yap app: needs rumps. Install it:\n"
+              "  pip install rumps    (or: pipx inject yap-dictation rumps)",
               file=sys.stderr)
         return 2
 
@@ -36,9 +36,9 @@ def run(cfg: dict[str, Any]) -> int:
 
     logic = App(cfg)
 
-    class VoxBar(rumps.App):
+    class YapBar(rumps.App):
         def __init__(self):
-            super().__init__("vox", title=_ICONS["idle"], quit_button=None)
+            super().__init__("yap", title=_ICONS["idle"], quit_button=None)
             self.status_item = rumps.MenuItem("Starting…")
             mode = cfg["hotkey"]["mode"]
             combo = cfg["hotkey"]["combo"]
@@ -48,7 +48,7 @@ def run(cfg: dict[str, Any]) -> int:
                 None,
                 rumps.MenuItem(f"Engine: {logic.engine.name}", callback=self._toggle_engine),
                 None,
-                rumps.MenuItem("Quit vox", callback=self._quit),
+                rumps.MenuItem("Quit yap", callback=self._quit),
             ]
             logic.status_cb = self._on_status
             self._listener = None
@@ -76,12 +76,12 @@ def run(cfg: dict[str, Any]) -> int:
             saved = _config.load()
             saved["engine"] = new
             _config.save(saved)
-            rumps.alert("vox", f"Engine set to '{new}'. Quit and relaunch vox to apply.")
+            rumps.alert("yap", f"Engine set to '{new}'. Quit and relaunch yap to apply.")
 
         def _quit(self, _sender):
             if self._listener is not None:
                 self._listener.stop()
             rumps.quit_application()
 
-    VoxBar().run()
+    YapBar().run()
     return 0

@@ -1,9 +1,9 @@
 """Configuration: cross-platform paths, sane offline-first defaults, env overrides.
 
 Config lives at:
-  Linux/BSD : $XDG_CONFIG_HOME/vox/config.json   (~/.config/vox/config.json)
-  macOS     : ~/Library/Application Support/vox/config.json
-  Windows   : %APPDATA%\\vox\\config.json
+  Linux/BSD : $XDG_CONFIG_HOME/yap/config.json   (~/.config/yap/config.json)
+  macOS     : ~/Library/Application Support/yap/config.json
+  Windows   : %APPDATA%\\yap\\config.json
 
 Secrets are never stored in the file. API keys are read from environment
 variables named by `*.api_key_env` so the config is safe to commit/share.
@@ -18,7 +18,7 @@ import sys
 from pathlib import Path
 from typing import Any
 
-APP_NAME = "vox"
+APP_NAME = "yap"
 
 DEFAULT_CONFIG: dict[str, Any] = {
     # "local"  -> faster-whisper on this machine (offline, free, private)
@@ -37,7 +37,7 @@ DEFAULT_CONFIG: dict[str, Any] = {
         # Groq is a great default: OpenAI-compatible, very fast, generous free tier.
         "base_url": "https://api.groq.com/openai/v1",
         "model": "whisper-large-v3-turbo",
-        "api_key_env": "VOX_API_KEY",
+        "api_key_env": "YAP_API_KEY",
         "language": None,
     },
     # Optional second pass: clean up filler words / fix punctuation with an LLM.
@@ -89,12 +89,12 @@ DEFAULT_CONFIG: dict[str, Any] = {
     # Terminal chatter: "quiet" (errors only), "normal" (listening + result),
     # "debug" (every stage + tracebacks).
     "verbosity": "normal",
-    # Play nice with other voice apps (e.g. your own assistant). vox only opens
+    # Play nice with other voice apps (e.g. your own assistant). yap only opens
     # the mic *while you hold the key*, so the device is free the rest of the
     # time. These hooks let you actively pause/resume another listener:
     #   on_record_start : shell command run the instant dictation begins
     #   on_record_stop  : shell command run after the text is injected
-    #   state_file      : if set, vox writes {"active": true/false} here to poll
+    #   state_file      : if set, yap writes {"active": true/false} here to poll
     "integration": {
         "on_record_start": "",
         "on_record_stop": "",
@@ -104,7 +104,7 @@ DEFAULT_CONFIG: dict[str, Any] = {
 
 
 def config_dir() -> Path:
-    override = os.environ.get("VOX_CONFIG_DIR")
+    override = os.environ.get("YAP_CONFIG_DIR")
     if override:
         return Path(override)
     if sys.platform == "darwin":
@@ -137,7 +137,7 @@ def load() -> dict[str, Any]:
         try:
             user = json.loads(path.read_text(encoding="utf-8"))
         except (json.JSONDecodeError, OSError) as e:
-            print(f"vox: warning: could not read {path}: {e}", file=sys.stderr)
+            print(f"yap: warning: could not read {path}: {e}", file=sys.stderr)
             user = {}
     else:
         user = {}

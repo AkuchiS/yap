@@ -1,5 +1,5 @@
 #!/usr/bin/env sh
-# vox installer for macOS / Linux.
+# yap installer for macOS / Linux.
 # Usage:  ./install/install.sh           (installs into the current Python)
 #         PIPX=1 ./install/install.sh    (isolated install via pipx)
 set -eu
@@ -7,7 +7,7 @@ set -eu
 ROOT="$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)"
 cd "$ROOT"
 
-echo "vox installer"
+echo "yap installer"
 echo "  project: $ROOT"
 
 if ! command -v python3 >/dev/null 2>&1; then
@@ -24,7 +24,7 @@ else
 fi
 
 echo
-echo "Done. Try:  vox run"
+echo "Done. Try:  yap run"
 case "$(uname -s)" in
   Darwin)
     echo "macOS: grant your terminal Microphone + Accessibility permission in"

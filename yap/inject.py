@@ -110,14 +110,14 @@ class Injector:
     def _paste(self, text: str) -> None:
         prior = clipboard_get() if self.restore_clipboard else None
         if not clipboard_set(text):
-            print("vox: clipboard unavailable; falling back to typing.", file=sys.stderr)
+            print("yap: clipboard unavailable; falling back to typing.", file=sys.stderr)
             self._keyboard().type(text)
             return
         time.sleep(0.02)  # let the clipboard settle before pasting
         try:
             _paste_hotkey(self._keyboard())
         except Exception as e:
-            print(f"vox: paste keystroke failed ({e}); typing instead.", file=sys.stderr)
+            print(f"yap: paste keystroke failed ({e}); typing instead.", file=sys.stderr)
             self._keyboard().type(text)
             return
         if self.restore_clipboard and prior is not None:

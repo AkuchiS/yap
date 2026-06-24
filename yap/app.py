@@ -99,7 +99,7 @@ class App:
             self.injector.inject(text)
             self._log("… injected at cursor", 2)
         except Exception as e:
-            self._log(f"vox: error during transcription: {e}", 0)
+            self._log(f"yap: error during transcription: {e}", 0)
             if self.verbosity >= _LEVELS["debug"]:
                 import traceback
 
@@ -120,11 +120,11 @@ class App:
         mode = self.cfg["hotkey"]["mode"]
         warn = combo_warning(combo)
         if warn:
-            self._log(f"vox: warning: {warn}", 0)
+            self._log(f"yap: warning: {warn}", 0)
         try:
             self.engine.warmup()
         except Exception as e:
-            self._log(f"vox: warmup failed: {e}", 0)
+            self._log(f"yap: warmup failed: {e}", 0)
         self._status("idle")
         return HotkeyListener(combo, mode, self.on_start, self.on_stop).start()
 
@@ -132,7 +132,7 @@ class App:
         combo = self.cfg["hotkey"]["combo"]
         mode = self.cfg["hotkey"]["mode"]
 
-        self._log(f"vox {_version()} — engine: {self.engine.name}", 1)
+        self._log(f"yap {_version()} — engine: {self.engine.name}", 1)
         self._log(describe_mode(mode, combo), 1)
         self._log("Warming up model…", 1)
         listener = self.start_background()
@@ -140,7 +140,7 @@ class App:
         try:
             listener.join()
         except KeyboardInterrupt:
-            self._log("\nvox: bye.", 1)
+            self._log("\nyap: bye.", 1)
         finally:
             listener.stop()
 

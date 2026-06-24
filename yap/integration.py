@@ -1,6 +1,6 @@
 """Cooperative handoff with other voice apps (e.g. your JARVIS).
 
-vox already releases the microphone the moment you let go of the hotkey — it
+yap already releases the microphone the moment you let go of the hotkey — it
 only opens the input stream while you're holding it. These hooks go further:
 they let another always-listening app *actively* pause while you dictate and
 resume right after, so it doesn't treat your dictation as a command.
@@ -33,7 +33,7 @@ class Integration:
             # fire-and-forget; never block dictation on the hook
             subprocess.Popen(command, shell=True)
         except Exception as e:
-            print(f"vox: integration hook failed: {e}", file=sys.stderr)
+            print(f"yap: integration hook failed: {e}", file=sys.stderr)
 
     def _write_state(self, active: bool) -> None:
         if not self.state_file:
@@ -42,7 +42,7 @@ class Integration:
             with open(self.state_file, "w", encoding="utf-8") as f:
                 json.dump({"active": active}, f)
         except Exception as e:
-            print(f"vox: could not write state file: {e}", file=sys.stderr)
+            print(f"yap: could not write state file: {e}", file=sys.stderr)
 
     def record_started(self) -> None:
         self._write_state(True)

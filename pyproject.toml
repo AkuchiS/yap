@@ -3,13 +3,13 @@ requires = ["setuptools>=61"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "vox-dictation"
+name = "yap-dictation"
 version = "0.1.0"
 description = "Free, offline-first, cross-platform voice dictation — speak anywhere, get text at your cursor."
 readme = "README.md"
 license = { text = "MIT" }
 requires-python = ">=3.9"
-authors = [{ name = "vox contributors" }]
+authors = [{ name = "yap contributors" }]
 keywords = ["dictation", "speech-to-text", "whisper", "voice", "accessibility", "wispr"]
 classifiers = [
     "Environment :: Console",
@@ -32,17 +32,17 @@ dependencies = [
 [project.optional-dependencies]
 # Nicer cross-platform clipboard; native CLIs are used as a fallback otherwise.
 clipboard = ["pyperclip>=1.8"]
-# macOS menu-bar app (`vox app`).
+# macOS menu-bar app (`yap app`).
 macos = ["rumps>=0.4.0; sys_platform == 'darwin'"]
 # Everything for the best desktop experience.
 full = ["pyperclip>=1.8", "rumps>=0.4.0; sys_platform == 'darwin'"]
 
 [project.scripts]
-vox = "vox.cli:main"
+yap = "yap.cli:main"
 
 [project.urls]
-Homepage = "https://github.com/vox-dictation/vox"
-Issues = "https://github.com/vox-dictation/vox/issues"
+Homepage = "https://github.com/yap-dictation/yap"
+Issues = "https://github.com/yap-dictation/yap/issues"
 
 [tool.setuptools.packages.find]
-include = ["vox*"]
+include = ["yap*"]

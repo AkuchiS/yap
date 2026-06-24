@@ -1,4 +1,4 @@
-# vox — free voice dictation, everywhere
+# yap — free voice dictation, everywhere
 
 Hold a hotkey, speak, and your words appear at the cursor **in any app** — editor,
 browser, chat, terminal. A free, open-source, offline-first alternative to
@@ -8,7 +8,7 @@ Wispr Flow / SuperWhisper.
   account, no telemetry, no screenshots of your screen. Your voice never leaves
   the device unless *you* choose a cloud engine.
 - ♾️ **No limits, no subscription** — Wispr Flow's free tier caps you at 2,000
-  words/week and then asks for $12–15/mo. vox is MIT-licensed and unlimited.
+  words/week and then asks for $12–15/mo. yap is MIT-licensed and unlimited.
 - 🖥️ **Cross-platform** — macOS, Windows, Linux. One config, same behaviour.
 - ⚡ **Fast** — sub-real-time on CPU with the `base` model; instant with a GPU or
   a cloud key (Groq's Whisper turbo is blazing).
@@ -18,12 +18,12 @@ Wispr Flow / SuperWhisper.
 
 ```
   you: (hold Ctrl+Alt)  "send him the q3 numbers by friday"
-  vox: Send him the Q3 numbers by Friday.        ← typed at your cursor
+  yap: Send him the Q3 numbers by Friday.        ← typed at your cursor
 ```
 
 ## How it compares
 
-| | Wispr Flow | **vox** |
+| | Wispr Flow | **yap** |
 |---|---|---|
 | Price | $12–15/mo (free tier: 2k words/wk) | **Free, unlimited** |
 | Offline mode | ❌ cloud only | ✅ **local Whisper by default** |
@@ -38,15 +38,15 @@ Requires **Python 3.9+**. The local engine downloads a small Whisper model on
 first use (~150 MB for `base`).
 
 ```bash
-git clone https://github.com/vox-dictation/vox
-cd vox
+git clone https://github.com/yap-dictation/yap
+cd yap
 pip install .            # add [full] for the recommended clipboard helper:  pip install ".[full]"
 ```
 
 Or without cloning:
 
 ```bash
-pip install vox-dictation        # once published to PyPI
+pip install yap-dictation        # once published to PyPI
 ```
 
 ### Per-OS extras
@@ -63,48 +63,48 @@ pip install vox-dictation        # once published to PyPI
 ## Usage
 
 ```bash
-vox run                       # start the daemon; hold your hotkey and talk
-vox app                       # macOS menu-bar app (like Wispr)
-vox transcribe meeting.m4a    # one-shot: transcribe a file, print the text
-vox vocab add JARVIS          # teach it your words (see below)
-vox hardware                  # show your specs + the model it'll auto-pick
-vox doctor                    # diagnose permissions / hotkey / mic / clipboard
-vox devices                   # list microphones
-vox config show               # print effective config
+yap run                       # start the daemon; hold your hotkey and talk
+yap app                       # macOS menu-bar app (like Wispr)
+yap transcribe meeting.m4a    # one-shot: transcribe a file, print the text
+yap vocab add JARVIS          # teach it your words (see below)
+yap hardware                  # show your specs + the model it'll auto-pick
+yap doctor                    # diagnose permissions / hotkey / mic / clipboard
+yap devices                   # list microphones
+yap config show               # print effective config
 ```
 
 ### Adapts to your machine
 
-The default model is `"auto"` — vox detects your CPU/RAM/chip and picks a size
+The default model is `"auto"` — yap detects your CPU/RAM/chip and picks a size
 that stays responsive: `tiny.en` on very old/light machines, `base.en` on a
 2019-era laptop, `small.en` on modern hardware, GPU-accelerated if you have
-CUDA. Run `vox hardware` to see the pick, or pin one with
-`vox config set local.model '"small"'`.
+CUDA. Run `yap hardware` to see the pick, or pin one with
+`yap config set local.model '"small"'`.
 
 ### Plays nice with other voice apps
 
-vox only holds the mic *while you hold the hotkey*, so it doesn't fight your
+yap only holds the mic *while you hold the hotkey*, so it doesn't fight your
 other tools. If you run your own always-listening assistant, point the
 integration hooks at it so it pauses while you dictate and resumes after:
 
 ```bash
-vox config set integration.on_record_start '"myassistant pause"'
-vox config set integration.on_record_stop  '"myassistant resume"'
+yap config set integration.on_record_start '"myassistant pause"'
+yap config set integration.on_record_stop  '"myassistant resume"'
 # or poll integration.state_file for {"active": true/false}
 ```
 
-By default vox is **push-to-talk on a single key** (like Wispr's "hold to
+By default yap is **push-to-talk on a single key** (like Wispr's "hold to
 dictate"): **hold Right Option ⌥** on macOS (Right Ctrl elsewhere), speak, and
 release to transcribe.
 
 ### Choosing a hotkey
 
 ```bash
-vox config set hotkey.combo '"<alt_r>"'    # Right Option ⌥ (macOS default)
-vox config set hotkey.combo '"<cmd_r>"'    # Right Command
-vox config set hotkey.combo '"<f9>"'       # a function key
-vox config set hotkey.combo '"<ctrl>+<alt>"'   # a two-key combo
-vox config set hotkey.mode  '"toggle"'     # press to start, press to stop
+yap config set hotkey.combo '"<alt_r>"'    # Right Option ⌥ (macOS default)
+yap config set hotkey.combo '"<cmd_r>"'    # Right Command
+yap config set hotkey.combo '"<f9>"'       # a function key
+yap config set hotkey.combo '"<ctrl>+<alt>"'   # a two-key combo
+yap config set hotkey.mode  '"toggle"'     # press to start, press to stop
 ```
 
 > **Why not the Fn / 🌐 key?** It's the obvious one-finger choice, but on macOS
@@ -114,13 +114,13 @@ vox config set hotkey.mode  '"toggle"'     # press to start, press to stop
 
 ## Teach it your words
 
-Like Wispr, vox can learn the names and jargon you use so they come out right
+Like Wispr, yap can learn the names and jargon you use so they come out right
 instead of being guessed at ("JARVIS", not "Java" or "Jarvis"):
 
 ```bash
-vox vocab add JARVIS Anthropic Kubernetes     # bias recognition toward these
-vox vocab fix "jarvis" "JARVIS"               # always rewrite a misheard word
-vox vocab list
+yap vocab add JARVIS Anthropic Kubernetes     # bias recognition toward these
+yap vocab fix "jarvis" "JARVIS"               # always rewrite a misheard word
+yap vocab list
 ```
 
 `vocab add` feeds Whisper a glossary hint (helps it *spell* unfamiliar words);
@@ -128,29 +128,29 @@ vox vocab list
 
 ## Quiet vs. verbose
 
-By default vox prints just `● listening…` and the final `✓ "transcript"`.
-Want silence (e.g. running it as a background app)? `vox run --quiet`.
-Debugging? `vox run --debug` narrates every stage.
+By default yap prints just `● listening…` and the final `✓ "transcript"`.
+Want silence (e.g. running it as a background app)? `yap run --quiet`.
+Debugging? `yap run --debug` narrates every stage.
 
 ## Configuration
 
-Config is a JSON file (`vox config path` to find it). Secrets are **never**
+Config is a JSON file (`yap config path` to find it). Secrets are **never**
 stored here — API keys are read from environment variables. Common tweaks:
 
 ```bash
 # Use a cloud engine for speed (bring your own key):
-export VOX_API_KEY=gsk_...                 # e.g. a Groq key
-vox config set engine '"cloud"'
+export YAP_API_KEY=gsk_...                 # e.g. a Groq key
+yap config set engine '"cloud"'
 
 # Turn on the optional LLM cleanup pass (punctuation, filler removal):
 export OPENROUTER_API_KEY=sk-or-...
-vox config set cleanup.enabled true
+yap config set cleanup.enabled true
 
-# Choose a specific microphone (index from `vox devices`):
-vox config set audio.device 3
+# Choose a specific microphone (index from `yap devices`):
+yap config set audio.device 3
 
 # Paste vs. direct typing:
-vox config set inject.method '"type"'      # if clipboard paste misbehaves
+yap config set inject.method '"type"'      # if clipboard paste misbehaves
 ```
 
 Engines:
@@ -160,19 +160,20 @@ Engines:
 | `local` *(default)* | faster-whisper on your CPU/GPU | free | audio never leaves the machine |
 | `cloud` | any OpenAI-compatible `/audio/transcriptions` | your key | audio sent to that endpoint |
 
-Local model sizes (set `local.model`): `tiny.en`, `base.en` *(default)*,
-`small`, `medium`, `large-v3`. Bigger = more accurate, slower, more RAM.
+Local model sizes (set `local.model`): `auto` *(default — adapts to your
+machine)*, `tiny.en`, `base.en`, `small`, `medium`, `large-v3`. Bigger = more
+accurate, slower, more RAM.
 
 ## Run it on login (optional)
 
-- **macOS / Linux** — add `vox run` to your login items / a user systemd service.
-- **Windows** — a shortcut to `vox run` in the Startup folder.
+- **macOS / Linux** — add `yap run` to your login items / a user systemd service.
+- **Windows** — a shortcut to `yap run` in the Startup folder.
 
 See [`install/`](install/) for ready-made helpers.
 
 ## Privacy
 
-With the default `local` engine, vox is **100% offline** — disconnect your
+With the default `local` engine, yap is **100% offline** — disconnect your
 network and it still works. It records audio only while you hold/toggle the
 hotkey, keeps nothing on disk, and phones no one home. Cloud engines and the
 optional cleanup pass are strictly opt-in and only ever talk to the endpoint

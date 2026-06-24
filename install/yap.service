@@ -1,18 +1,18 @@
-# systemd user service for vox (Linux).
+# systemd user service for yap (Linux).
 # Install:
 #   mkdir -p ~/.config/systemd/user
-#   cp install/vox.service ~/.config/systemd/user/vox.service
+#   cp install/yap.service ~/.config/systemd/user/yap.service
 #   systemctl --user daemon-reload
-#   systemctl --user enable --now vox
+#   systemctl --user enable --now yap
 # Note: needs a graphical session (DISPLAY/WAYLAND_DISPLAY) for hotkeys + paste.
 [Unit]
-Description=vox voice dictation daemon
+Description=yap voice dictation daemon
 After=graphical-session.target
 PartOf=graphical-session.target
 
 [Service]
 Type=simple
-ExecStart=%h/.local/bin/vox run
+ExecStart=%h/.local/bin/yap run
 Restart=on-failure
 RestartSec=3
 
