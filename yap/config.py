@@ -86,6 +86,14 @@ DEFAULT_CONFIG: dict[str, Any] = {
     # Deterministic fix-ups applied after transcription, {heard: wanted}. Useful
     # when a word is *consistently* misheard, e.g. {"jarvis": "JARVIS"}.
     "replacements": {},
+    # Auto-vocabulary: learn the proper nouns/jargon you repeat and add them to
+    # your glossary automatically. min_count = times a word must appear before
+    # it's learned; max_words caps the learned glossary so the prompt stays lean.
+    "learning": {
+        "enabled": True,
+        "min_count": 3,
+        "max_words": 80,
+    },
     # Terminal chatter: "quiet" (errors only), "normal" (listening + result),
     # "debug" (every stage + tracebacks).
     "verbosity": "normal",

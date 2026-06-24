@@ -14,8 +14,9 @@ from .audio import Recorder
 from .hotkey import HotkeyListener, combo_warning, describe_mode
 from .inject import Injector
 from .integration import Integration
+from .learn import VocabLearner
 from .stt import build_engine
-from .text import apply_replacements
+from .text import apply_replacements, build_prompt
 
 _LEVELS = {"quiet": 0, "normal": 1, "debug": 2}
 
@@ -27,6 +28,8 @@ class App:
         self.recorder = Recorder(cfg["audio"])
         self.injector = Injector(cfg["inject"])
         self.integration = Integration(cfg)
+        self.learner = VocabLearner(cfg)
+        self._refresh_prompt()  # fold any already-learned words into the glossary
         self.samplerate = int(cfg["audio"].get("samplerate", 16000))
         self.verbosity = _LEVELS.get(cfg.get("verbosity", "normal"), 1)
         # Optional callback for a GUI (menu-bar app) to reflect state:
@@ -44,6 +47,14 @@ class App:
                 self.status_cb(state)
             except Exception:
                 pass
+
+    def _refresh_prompt(self) -> None:
+        """Rebuild the Whisper biasing prompt from manual + auto-learned words."""
+        words = list(self.cfg.get("vocabulary", [])) + self.learner.words()
+        try:
+            self.engine.prompt = build_prompt(words)
+        except Exception:
+            pass
 
     # ---- hotkey callbacks ---------------------------------------------------
     def on_start(self):
@@ -100,6 +111,11 @@ class App:
             self._log(f"  ({secs:.1f}s audio, {dt:.1f}s transcribe)", 2)
             self.injector.inject(text)
             self._log("… injected at cursor", 2)
+            # learn from what you just said; fold new words into future biasing
+            learned = self.learner.observe(text)
+            if learned:
+                self._refresh_prompt()
+                self._log(f"  + learned: {', '.join(learned)}", 1)
         except Exception as e:
             self._log(f"yap: error during transcription: {e}", 0)
             if self.verbosity >= _LEVELS["debug"]:

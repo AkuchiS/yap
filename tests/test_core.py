@@ -101,6 +101,38 @@ def test_integration_state_file(tmp_path=None):
     assert json.load(open(sf))["active"] is False
 
 
+def test_learn_extract_candidates():
+    from yap.learn import extract_candidates
+
+    c = extract_candidates("I told JARVIS to push JavaScript to GitHub. Anthropic ships Claude.")
+    assert "JARVIS" in c          # acronym
+    assert "JavaScript" in c and "GitHub" in c   # CamelCase
+    assert "Claude" in c          # mid-sentence proper noun
+    assert "Anthropic" not in c   # sentence-initial → skipped (grammar, not a name)
+    assert "I" not in c           # too short / stopword
+
+
+def test_learn_promotes_after_min_count():
+    import tempfile
+
+    os.environ["YAP_CONFIG_DIR"] = tempfile.mkdtemp()
+    try:
+        from yap.learn import VocabLearner
+
+        learner = VocabLearner({"vocabulary": [],
+                                "learning": {"enabled": True, "min_count": 3,
+                                             "max_words": 80}})
+        for _ in range(2):
+            learner.observe("Open ComfyUI please.")
+        assert "ComfyUI" not in learner.words()   # only seen twice
+        learner.observe("Open ComfyUI please.")
+        assert "ComfyUI" in learner.words()        # third time → promoted
+        assert learner.forget("comfyui") is True
+        assert "ComfyUI" not in learner.words()
+    finally:
+        os.environ.pop("YAP_CONFIG_DIR", None)
+
+
 def test_build_prompt_glossary():
     assert build_prompt([]) is None
     assert build_prompt(None) is None

@@ -57,6 +57,23 @@ def _cmd_vocab(args) -> int:
             print("replacements:")
             for k, v in repl.items():
                 print(f"  {k!r} -> {v!r}")
+        from .learn import VocabLearner
+
+        learned = VocabLearner(cfg).words()
+        print("auto-learned:", ", ".join(learned) if learned else "(none yet)")
+        return 0
+    if args.action == "learned":
+        from .learn import VocabLearner
+
+        learned = VocabLearner(cfg).words()
+        print("\n".join(learned) if learned else "(nothing learned yet)")
+        return 0
+    if args.action == "forget":
+        from .learn import VocabLearner
+
+        learner = VocabLearner(cfg)
+        gone = [w for w in args.words if learner.forget(w)]
+        print(f"forgot {gone or '(nothing matched)'}")
         return 0
     if args.action == "add":
         added = [w for w in args.words if w not in vocab]
@@ -262,7 +279,8 @@ def build_parser() -> argparse.ArgumentParser:
     ps.set_defaults(func=_cmd_selftest)
 
     pv = sub.add_parser("vocab", help="teach yap your words (names, jargon, fixes)")
-    pv.add_argument("action", choices=["list", "add", "remove", "fix"])
+    pv.add_argument("action",
+                    choices=["list", "add", "remove", "fix", "learned", "forget"])
     pv.add_argument("words", nargs="*", help="word(s); for 'fix': <heard> <wanted>")
     pv.set_defaults(func=_cmd_vocab)
 

@@ -148,6 +148,22 @@ yap vocab list
 `vocab add` feeds Whisper a glossary hint (helps it *spell* unfamiliar words);
 `vocab fix` is a guaranteed find/replace for words it *consistently* mangles.
 
+### It also learns on its own
+
+By default yap **watches what you dictate** and learns the proper nouns, jargon,
+and acronyms you use repeatedly — adding them to your glossary automatically
+(capped, persisted, and never one-offs). So names like `JARVIS` or `Kubernetes`
+start coming out right after you've used them a few times, with no effort.
+
+```bash
+yap vocab learned          # see what it's picked up
+yap vocab forget Foo       # drop something it learned by mistake
+```
+
+Tune or disable it in config under `learning` (`enabled`, `min_count`,
+`max_words`). It only ever learns repeated words and is capped, so it can't run
+away or hurt accuracy.
+
 ## Quiet vs. verbose
 
 By default yap prints just `● listening…` and the final `✓ "transcript"`.
