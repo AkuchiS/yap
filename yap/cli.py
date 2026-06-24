@@ -98,6 +98,28 @@ def _cmd_app(_args) -> int:
     return menubar.run(config.load())
 
 
+def _cmd_icon(args) -> int:
+    import shutil
+    from pathlib import Path
+
+    cfg = config.load()
+    if not args.path:
+        cur = config.icon_path(cfg)
+        print(f"current icon: {cur or '(none — default interpreter icon)'}")
+        print("set one with:  yap icon /path/to/image.png")
+        return 0
+    src = Path(args.path).expanduser()
+    if not src.exists():
+        print(f"yap: no such file: {src}", file=sys.stderr)
+        return 1
+    dest = config.config_dir() / "icon.png"
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copyfile(src, dest)
+    print(f"installed icon → {dest}")
+    print("relaunch 'yap app' to see it in the Dock.")
+    return 0
+
+
 def _cmd_hardware(_args) -> int:
     from . import hardware
 
@@ -177,6 +199,10 @@ def build_parser() -> argparse.ArgumentParser:
 
     pa = sub.add_parser("app", help="run the macOS menu-bar app (like Wispr)")
     pa.set_defaults(func=_cmd_app)
+
+    pi = sub.add_parser("icon", help="set a custom Dock icon for the app")
+    pi.add_argument("path", nargs="?", help="image file (PNG/ICNS); omit to show current")
+    pi.set_defaults(func=_cmd_icon)
 
     ph = sub.add_parser("hardware", help="show detected specs + recommended model")
     ph.set_defaults(func=_cmd_hardware)

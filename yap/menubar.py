@@ -12,10 +12,29 @@ from __future__ import annotations
 
 import sys
 import threading
-from typing import Any
+from typing import Any, Optional
+
+from . import config
 
 # Icons for each state (kept text-glyphs so no asset files are needed).
 _ICONS = {"idle": "🎙", "listening": "🔴", "transcribing": "⏳"}
+
+
+def _set_dock_icon(path: Optional[str]) -> bool:
+    """Set the Dock/app icon to a user image at runtime (macOS, via AppKit)."""
+    if not path:
+        return False
+    try:
+        from AppKit import NSApplication, NSImage
+
+        img = NSImage.alloc().initByReferencingFile_(path)
+        if img is not None and img.isValid():
+            NSApplication.sharedApplication().setApplicationIconImage_(img)
+            return True
+        print(f"yap: icon file isn't a valid image: {path}", file=sys.stderr)
+    except Exception as e:
+        print(f"yap: could not set Dock icon ({e})", file=sys.stderr)
+    return False
 
 
 def run(cfg: dict[str, Any]) -> int:
@@ -39,14 +58,19 @@ def run(cfg: dict[str, Any]) -> int:
     class YapBar(rumps.App):
         def __init__(self):
             super().__init__("yap", title=_ICONS["idle"], quit_button=None)
+            _set_dock_icon(config.icon_path(cfg))
             self.status_item = rumps.MenuItem("Starting…")
             mode = cfg["hotkey"]["mode"]
             combo = cfg["hotkey"]["combo"]
+            # Explicit "switch to" label so a stray click can't silently strand
+            # you on the cloud engine (which needs an API key).
+            other = "cloud" if logic.engine.name == "local" else "local"
             self.menu = [
                 self.status_item,
                 rumps.MenuItem(describe_mode(mode, combo)),
                 None,
-                rumps.MenuItem(f"Engine: {logic.engine.name}", callback=self._toggle_engine),
+                rumps.MenuItem(f"Engine: {logic.engine.name}  ·  switch to {other}",
+                               callback=self._toggle_engine),
                 None,
                 rumps.MenuItem("Quit yap", callback=self._quit),
             ]
@@ -71,12 +95,15 @@ def run(cfg: dict[str, Any]) -> int:
         def _toggle_engine(self, sender):
             # flip local <-> cloud for the *next* launch (engine is built at start)
             new = "cloud" if logic.engine.name == "local" else "local"
-            from . import config as _config
-
-            saved = _config.load()
+            saved = config.load()
             saved["engine"] = new
-            _config.save(saved)
-            rumps.alert("yap", f"Engine set to '{new}'. Quit and relaunch yap to apply.")
+            config.save(saved)
+            note = ""
+            if new == "cloud":
+                note = ("\n\nCloud needs an API key in $YAP_API_KEY. Without one, "
+                        "yap will warn at startup and dictation won't work — switch "
+                        "back to 'local' if you don't have a key set.")
+            rumps.alert("yap", f"Engine set to '{new}'. Quit and relaunch yap to apply.{note}")
 
         def _quit(self, _sender):
             if self._listener is not None:

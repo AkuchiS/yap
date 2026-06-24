@@ -100,7 +100,23 @@ DEFAULT_CONFIG: dict[str, Any] = {
         "on_record_stop": "",
         "state_file": "",
     },
+    # Menu-bar app appearance. icon = path to a custom Dock icon (PNG/ICNS);
+    # empty means look for <config_dir>/icon.png (set it with `yap icon <file>`).
+    "app": {
+        "icon": "",
+    },
 }
+
+
+def icon_path(cfg: dict[str, Any]) -> str | None:
+    """Resolve the custom app/Dock icon: explicit config, else <config_dir>/icon.png."""
+    explicit = (cfg.get("app", {}) or {}).get("icon") or ""
+    if explicit:
+        p = Path(explicit).expanduser()
+        if p.exists():
+            return str(p)
+    default = config_dir() / "icon.png"
+    return str(default) if default.exists() else None
 
 
 def config_dir() -> Path:
