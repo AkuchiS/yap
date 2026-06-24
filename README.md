@@ -35,19 +35,21 @@ Wispr Flow / SuperWhisper.
 ## Install
 
 Requires **Python 3.9+**. The local engine downloads a small Whisper model on
-first use (~150 MB for `base`).
+first use. Clone, run the installer, go:
 
 ```bash
-git clone https://github.com/yap-dictation/yap
+git clone https://github.com/AkuchiS/yap.git
 cd yap
-pip install .            # add [full] for the recommended clipboard helper:  pip install ".[full]"
+./install.sh
+yap run
 ```
 
-Or without cloning:
+`./install.sh` sets up an isolated [pipx](https://pipx.pypa.io) environment so
+nothing pollutes your system Python. Then hold **Right Option**, speak, release —
+your words land at the cursor.
 
-```bash
-pip install yap-dictation        # once published to PyPI
-```
+> Once this repo is public, the whole thing collapses to one line:
+> `pipx install git+https://github.com/AkuchiS/yap`
 
 ### Per-OS extras
 
