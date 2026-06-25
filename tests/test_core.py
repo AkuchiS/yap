@@ -191,6 +191,26 @@ def test_license_grandfather_code_roundtrip_and_cutoff():
         os.environ.pop("YAP_CONFIG_DIR", None)
 
 
+def test_audio_resolve_device_preference_list():
+    from yap import audio
+
+    orig = audio._match_substring
+    present = {"studio display": 3}  # simulate clamshell: only the display mic exists
+    audio._match_substring = lambda s: present.get(str(s).lower())
+    try:
+        # int / None pass straight through (no device query)
+        assert audio.resolve_device(None) is None
+        assert audio.resolve_device(7) == 7
+        # single substring: present -> its index; absent -> None (system default)
+        assert audio.resolve_device("Studio Display") == 3
+        assert audio.resolve_device("MacBook Pro Microphone") is None
+        # preference list: first present wins (built-in missing -> display mic)
+        assert audio.resolve_device(["MacBook Pro Microphone", "Studio Display"]) == 3
+        assert audio.resolve_device(["nope", "nada"]) is None
+    finally:
+        audio._match_substring = orig
+
+
 if __name__ == "__main__":
     fns = [v for k, v in sorted(globals().items()) if k.startswith("test_")]
     for fn in fns:

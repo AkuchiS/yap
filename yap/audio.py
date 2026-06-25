@@ -14,6 +14,54 @@ from typing import Any, Optional
 import numpy as np
 
 
+def _match_substring(name_sub: str):
+    """First input device whose name contains `name_sub` (case-insensitive), or None."""
+    import sounddevice as sd
+
+    name_sub = str(name_sub).lower()
+    for idx, dev in enumerate(sd.query_devices()):
+        if dev["max_input_channels"] > 0 and name_sub in dev["name"].lower():
+            return idx
+    return None
+
+
+def _resolve_one(entry):
+    """Resolve a single spec entry to an index, quietly (None if not found)."""
+    if entry is None or entry == "":
+        return None
+    if isinstance(entry, int):
+        return entry
+    return _match_substring(entry)
+
+
+def resolve_device(spec):
+    """Resolve an input-device spec to a PortAudio index (None = system default).
+
+    `spec` may be:
+      * None / ""          -> system default mic
+      * an int             -> that device index
+      * a name substring   -> first input device whose name contains it
+      * a list of the above -> tried in order, first match wins. Ideal for a laptop
+        that docks to external displays: list your built-in mic first and the
+        dock/display mic as a fallback, e.g.
+        ["MacBook Pro Microphone", "Studio Display"]. Re-evaluated on every
+        recording, so it adapts as you plug/unplug without losing your mic to
+        whatever macOS just made the default.
+    """
+    if isinstance(spec, (list, tuple)):
+        for entry in spec:
+            idx = _resolve_one(entry)
+            if idx is not None:
+                return idx
+        print(f"yap: none of input devices {list(spec)!r} found; using default mic.",
+              file=sys.stderr)
+        return None
+    idx = _resolve_one(spec)
+    if idx is None and spec not in (None, ""):
+        print(f"yap: input device {spec!r} not found; using default mic.", file=sys.stderr)
+    return idx
+
+
 class Recorder:
     def __init__(self, cfg: dict[str, Any]):
         self.samplerate = int(cfg.get("samplerate", 16000))
@@ -22,18 +70,7 @@ class Recorder:
         self.max_seconds = float(cfg.get("max_seconds", 120))
 
     def _resolve_device(self):
-        if self.device is None or self.device == "":
-            return None
-        if isinstance(self.device, int):
-            return self.device
-        # match by name substring (case-insensitive)
-        import sounddevice as sd
-
-        for idx, dev in enumerate(sd.query_devices()):
-            if dev["max_input_channels"] > 0 and str(self.device).lower() in dev["name"].lower():
-                return idx
-        print(f"yap: input device {self.device!r} not found; using default.", file=sys.stderr)
-        return None
+        return resolve_device(self.device)
 
     def record_until(self, stop: threading.Event) -> Optional["np.ndarray"]:
         """Block until `stop` is set (or max_seconds elapses). Return mono float32."""
@@ -80,8 +117,12 @@ class Recorder:
         return audio.astype(np.float32)
 
 
-def list_devices() -> str:
-    """Human-readable list of input devices (for `yap devices`)."""
+def list_devices(cfg: "dict | None" = None) -> str:
+    """Human-readable list of input devices (for `yap devices`).
+
+    Pass the loaded config to also show which mic yap will actually use given
+    your `audio.device` setting — handy when external displays add extra mics.
+    """
     try:
         import sounddevice as sd
     except Exception as e:  # pragma: no cover - depends on host
@@ -95,4 +136,19 @@ def list_devices() -> str:
         if dev["max_input_channels"] > 0:
             mark = "  <- default" if idx == default_in else ""
             lines.append(f"  {idx}: {dev['name']} ({dev['max_input_channels']} ch){mark}")
+
+    spec = (cfg.get("audio") or {}).get("device") if cfg else None
+    lines.append("")
+    if spec in (None, "", [], ()):
+        lines.append("yap will use: the system default mic.")
+        lines.append("Pin one (or a fallback list) so docking doesn't steal your mic:")
+        lines.append("  yap config set audio.device '\"MacBook Pro Microphone\"'")
+        lines.append("  yap config set audio.device '[\"MacBook Pro Microphone\", \"Studio Display\"]'")
+    else:
+        idx = resolve_device(spec)
+        if idx is None:
+            lines.append(f"yap will use: system default (configured {spec!r} not present).")
+        else:
+            name = sd.query_devices()[idx]["name"]
+            lines.append(f"yap will use: {idx}: {name}  (configured: {spec!r})")
     return "\n".join(lines)

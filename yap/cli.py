@@ -100,7 +100,7 @@ def _cmd_vocab(args) -> int:
 def _cmd_devices(_args) -> int:
     from .audio import list_devices
 
-    print(list_devices())
+    print(list_devices(config.load()))
     return 0
 
 
