@@ -1,4 +1,4 @@
-"""Cooperative, context-aware handoff with other voice apps (e.g. your JARVIS).
+"""Cooperative, context-aware handoff with other voice apps (e.g. another assistant).
 
 yap already releases the microphone the moment you let go of the hotkey — it only
 opens the input stream while you're holding it. These hooks go further: they let

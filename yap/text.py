@@ -4,11 +4,11 @@ Two complementary mechanisms, mirroring what makes Wispr feel personalized:
 
   * build_prompt(): turns your vocabulary list into a Whisper "initial prompt".
     Whisper biases its output toward spellings it has just seen, so listing
-    "JARVIS", "Anthropic", "Kubernetes" nudges it to transcribe them correctly
+    "PostgreSQL", "Anthropic", "Kubernetes" nudges it to transcribe them correctly
     instead of guessing ("Java", "philanthropic", "cube an eddies").
 
   * apply_replacements(): whole-word, case-insensitive find/replace for the
-    cases Whisper *consistently* gets wrong, e.g. {"jarvis": "JARVIS"}.
+    cases Whisper *consistently* gets wrong, e.g. {"github": "GitHub"}.
 """
 
 from __future__ import annotations

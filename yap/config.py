@@ -81,10 +81,10 @@ DEFAULT_CONFIG: dict[str, Any] = {
         "max_seconds": 120,          # hard cap so a stuck recording can't run forever
     },
     # Words/names to bias recognition toward, so jargon and proper nouns come
-    # out right (e.g. "JARVIS", "Anthropic"). Fed to Whisper as a hint prompt.
+    # out right (e.g. "PostgreSQL", "Anthropic"). Fed to Whisper as a hint prompt.
     "vocabulary": [],
     # Deterministic fix-ups applied after transcription, {heard: wanted}. Useful
-    # when a word is *consistently* misheard, e.g. {"jarvis": "JARVIS"}.
+    # when a word is *consistently* misheard, e.g. {"github": "GitHub"}.
     "replacements": {},
     # Auto-vocabulary: learn the proper nouns/jargon you repeat and add them to
     # your glossary automatically. min_count = times a word must appear before

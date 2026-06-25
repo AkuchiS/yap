@@ -104,8 +104,8 @@ def test_integration_state_file(tmp_path=None):
 def test_learn_extract_candidates():
     from yap.learn import extract_candidates
 
-    c = extract_candidates("I told JARVIS to push JavaScript to GitHub. Anthropic ships Claude.")
-    assert "JARVIS" in c          # acronym
+    c = extract_candidates("I told NASA to push JavaScript to GitHub. Anthropic ships Claude.")
+    assert "NASA" in c          # acronym
     assert "JavaScript" in c and "GitHub" in c   # CamelCase
     assert "Claude" in c          # mid-sentence proper noun
     assert "Anthropic" not in c   # sentence-initial → skipped (grammar, not a name)
@@ -136,17 +136,17 @@ def test_learn_promotes_after_min_count():
 def test_build_prompt_glossary():
     assert build_prompt([]) is None
     assert build_prompt(None) is None
-    assert build_prompt(["JARVIS", "Anthropic"]) == "Glossary: JARVIS, Anthropic."
+    assert build_prompt(["NASA", "Anthropic"]) == "Glossary: NASA, Anthropic."
 
 
 def test_apply_replacements_whole_word_case_insensitive():
-    assert apply_replacements("i love jarvis and Jarvis", {"jarvis": "JARVIS"}) == \
-        "i love JARVIS and JARVIS"
+    assert apply_replacements("i love github and Github", {"github": "GitHub"}) == \
+        "i love GitHub and GitHub"
     # multi-word keys work
     assert apply_replacements("write java script", {"java script": "JavaScript"}) == \
         "write JavaScript"
     # doesn't clobber substrings inside other words
-    assert apply_replacements("jarvisson", {"jarvis": "JARVIS"}) == "jarvisson"
+    assert apply_replacements("githubson", {"github": "GitHub"}) == "githubson"
     # empty inputs are safe
     assert apply_replacements("", {"a": "b"}) == ""
     assert apply_replacements("x", {}) == "x"

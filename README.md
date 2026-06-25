@@ -22,7 +22,7 @@ Wispr Flow / SuperWhisper.
   (OpenRouter by default).
 
 ```
-  you: (hold Ctrl+Alt)  "send him the q3 numbers by friday"
+  you: (hold Right Option ⌥)  "send him the q3 numbers by friday"
   yap: Send him the Q3 numbers by Friday.        ← typed at your cursor
 ```
 
@@ -73,7 +73,7 @@ your words land at the cursor.
 yap run                       # start the daemon; hold your hotkey and talk
 yap app                       # macOS menu-bar app (like Wispr)
 yap transcribe meeting.m4a    # one-shot: transcribe a file, print the text
-yap vocab add JARVIS          # teach it your words (see below)
+yap vocab add PostgreSQL      # teach it your words (see below)
 yap hardware                  # show your specs + the model it'll auto-pick
 yap doctor                    # diagnose permissions / hotkey / mic / clipboard
 yap devices                   # list microphones
@@ -106,15 +106,15 @@ about the OS and *which app you're dictating into*:
 |---|---|
 | `YAP_EVENT` | `start` or `stop` |
 | `YAP_OS` | `darwin` / `win32` / `linux` |
-| `YAP_ACTIVE_APP` | the frontmost app (e.g. `Slack`, `Code`, `JARVIS`) |
+| `YAP_ACTIVE_APP` | the frontmost app (e.g. `Slack`, `Code`, `Terminal`) |
 
 For example, *don't* pause your assistant when you're dictating **into** it:
 
 ```bash
 yap config set integration.on_record_start \
-  '"[ \"$YAP_ACTIVE_APP\" = \"JARVIS\" ] || jarvis pause"'
+  '"[ \"$YAP_ACTIVE_APP\" = \"MyAssistant\" ] || myassistant pause"'
 yap config set integration.on_record_stop \
-  '"[ \"$YAP_ACTIVE_APP\" = \"JARVIS\" ] || jarvis resume"'
+  '"[ \"$YAP_ACTIVE_APP\" = \"MyAssistant\" ] || myassistant resume"'
 ```
 
 Same context is written to `integration.state_file` as
@@ -142,11 +142,11 @@ yap config set hotkey.mode  '"toggle"'     # press to start, press to stop
 ## Teach it your words
 
 Like Wispr, yap can learn the names and jargon you use so they come out right
-instead of being guessed at ("JARVIS", not "Java" or "Jarvis"):
+instead of being guessed at ("PostgreSQL", not "post grey sequel"):
 
 ```bash
-yap vocab add JARVIS Anthropic Kubernetes     # bias recognition toward these
-yap vocab fix "jarvis" "JARVIS"               # always rewrite a misheard word
+yap vocab add PostgreSQL Anthropic Kubernetes # bias recognition toward these
+yap vocab fix "github" "GitHub"               # always rewrite a misheard word
 yap vocab list
 ```
 
@@ -157,7 +157,7 @@ yap vocab list
 
 By default yap **watches what you dictate** and learns the proper nouns, jargon,
 and acronyms you use repeatedly — adding them to your glossary automatically
-(capped, persisted, and never one-offs). So names like `JARVIS` or `Kubernetes`
+(capped, persisted, and never one-offs). So names like `PostgreSQL` or `Kubernetes`
 start coming out right after you've used them a few times, with no effort.
 
 ```bash

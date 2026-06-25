@@ -1,7 +1,7 @@
 """Auto-vocabulary: learn the words you actually use.
 
 yap watches your transcripts and counts the "learnable" tokens — acronyms
-(JARVIS, NASA), CamelCase (JavaScript, GitHub), and mid-sentence proper nouns
+(NASA, GDPR), CamelCase (JavaScript, GitHub), and mid-sentence proper nouns
 (names, places). Once you've used one `min_count` times it's promoted into your
 personal glossary, which biases future recognition toward spelling it right.
 
@@ -46,7 +46,7 @@ def extract_candidates(text: str) -> list[str]:
             w = m.group(0)
             if len(w) < 2 or w.lower() in _STOP:
                 continue
-            if w.isupper():                         # acronym: JARVIS, NASA
+            if w.isupper():                         # acronym: NASA, GDPR
                 out.append(w)
             elif _CAMEL.search(w):                  # CamelCase: JavaScript
                 out.append(w)
