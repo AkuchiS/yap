@@ -5,7 +5,7 @@ Local Whisper by default (no cloud, no telemetry); bring-your-own-key for
 cloud speed when you want it.
 """
 
-__version__ = "0.1.0"
+__version__ = "0.1.1"
 
 # Keep startup/shutdown quiet: HuggingFace's "set a HF_TOKEN" rate-limit notice
 # (we only ever download public Whisper models) and the benign leaked-semaphore

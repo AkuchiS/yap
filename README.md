@@ -5,21 +5,23 @@
 [![License: MIT](https://img.shields.io/github/license/AkuchiS/yap?color=8A2BE2)](LICENSE)
 ![Platforms](https://img.shields.io/badge/platform-macOS%20%7C%20Windows%20%7C%20Linux-8A2BE2)
 
-Hold a hotkey, speak, and your words appear at the cursor **in any app** — editor,
-browser, chat, terminal. A free, open-source, offline-first alternative to
-Wispr Flow / SuperWhisper.
+Hold a key, talk, and what you said lands at the cursor: your editor, browser, a
+chat box, the terminal, wherever you're typing. It's a free, open-source
+alternative to Wispr Flow and SuperWhisper, and it runs offline by default.
 
-- 🔒 **Private by default** — local Whisper runs on your machine. No cloud, no
-  account, no telemetry, no screenshots of your screen. Your voice never leaves
-  the device unless *you* choose a cloud engine.
-- ♾️ **No limits, no subscription** — Wispr Flow's free tier caps you at 2,000
-  words/week and then asks for $12–15/mo. yap is MIT-licensed and unlimited.
-- 🖥️ **Cross-platform** — macOS, Windows, Linux. One config, same behaviour.
-- ⚡ **Fast** — sub-real-time on CPU with the `base` model; instant with a GPU or
-  a cloud key (Groq's Whisper turbo is blazing).
-- 🔌 **Bring your own everything** — point it at OpenAI, Groq, or a self-hosted
-  Whisper server. Optional LLM cleanup pass via any OpenAI-compatible endpoint
-  (OpenRouter by default).
+What you get:
+
+- **It stays private.** Transcription runs locally with Whisper, so there's no
+  account, no cloud, no telemetry, and nothing screenshots your screen. Audio only
+  leaves your machine if you deliberately switch to a cloud engine.
+- **No word caps, no subscription.** Wispr's free tier stops at 2,000 words a week
+  and then runs $12–15/mo. yap is MIT-licensed, with no meter and nothing to upsell.
+- **Same on every OS.** macOS, Windows and Linux share one config file.
+- **Quick.** Faster than real time on CPU with the `base` model, near-instant with
+  a GPU or a cloud key.
+- **Your keys, your endpoints.** Point it at OpenAI, Groq, or a Whisper server you
+  host yourself. There's an optional LLM cleanup pass too, against any
+  OpenAI-compatible API.
 
 ```
   you: (hold Right Option ⌥)  "send him the q3 numbers by friday"
@@ -50,8 +52,8 @@ yap run
 ```
 
 `./install.sh` sets up an isolated [pipx](https://pipx.pypa.io) environment so
-nothing pollutes your system Python. Then hold **Right Option**, speak, release —
-your words land at the cursor.
+nothing pollutes your system Python. Then hold **Right Option**, speak, and let
+go; your words land at the cursor.
 
 > Prefer a one-liner? `pipx install git+https://github.com/AkuchiS/yap`
 > does the same thing.
@@ -89,33 +91,36 @@ that stays responsive: `tiny.en` on very old/light machines, `base.en` on a
 CUDA. Run `yap hardware` to see the pick, or pin one with
 `yap config set local.model '"small"'`.
 
-### Picking a microphone (docks & external displays)
+### Picking a microphone (laptops, docks & external displays)
 
-By default yap uses your **system default** mic. The catch: plug in an external
-display (or dock) with its own mic and macOS often *switches the default* to it —
-so yap suddenly records from a mic across the room. Pin the one you want:
+yap uses your system default mic, which is usually fine. Where it bites is docking
+a laptop to a monitor. Plenty of monitors, USB-C docks and webcams have their own
+mic built in, and the OS tends to make *that* the default the moment you plug in,
+so you end up recording from a mic across the room (or one that doesn't really
+work). It's not a mac quirk; Windows and Linux docks do the same thing.
+
+The fix is to pin the mic you actually want:
 
 ```bash
-yap devices                                              # see every mic + which yap will use
-yap config set audio.device '"MacBook Pro Microphone"'  # pin by name (substring, case-insensitive)
+yap devices                                       # list mics, and show which one yap picks
+yap config set audio.device '"Studio Display"'    # match by name (substring, case-insensitive)
 ```
 
-Dock and undock a lot? Give it an **ordered fallback list** instead of a single
-name — yap re-checks on every keypress and takes the first one that's actually
-present, so closing the lid (built-in mic gone) cleanly falls through to the
-display mic:
+If you dock and undock a lot, give it a list instead of one name. yap re-checks on
+every keypress and uses the first one that's actually plugged in, so closing the
+lid (built-in mic gone) just falls through to the next:
 
 ```bash
 yap config set audio.device '["MacBook Pro Microphone", "Studio Display"]'
+yap config set audio.device '["Built-in", "Dell Monitor", "USB"]'   # Windows/Linux style
 ```
 
-`yap devices` prints `yap will use: …` for your current setup so you can confirm.
+`yap devices` prints a `yap will use: …` line so you can see what it picked.
 
-yap captures at the mic's **native sample rate** and resamples internally, so
-mics that only run at 48 kHz (common on external displays) work too. If the
-indicator lights up but nothing gets transcribed, run `yap run --debug` in a
-terminal — yap now prints exactly why (couldn't open the mic, no audio arrived,
-or captured silence).
+Some external mics only run at 48 kHz. yap records at whatever rate the mic offers
+and resamples to 16 kHz itself, so those are fine. If the recording light comes on
+but nothing gets typed, run `yap run --debug` in a terminal and it'll say why: it
+couldn't open the mic, no audio arrived, or what it heard was silent.
 
 ### Plays nice with other voice apps (context-aware handoff)
 
