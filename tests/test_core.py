@@ -191,6 +191,17 @@ def test_license_grandfather_code_roundtrip_and_cutoff():
         os.environ.pop("YAP_CONFIG_DIR", None)
 
 
+def test_audio_resample_rate_conversion():
+    from yap.audio import _resample
+
+    sig = np.ones(4800, dtype=np.float32)        # 0.1s of DC at 48 kHz
+    out = _resample(sig, 48000, 16000)
+    assert abs(out.shape[0] - 1600) <= 1         # ~1/3 the samples
+    assert np.allclose(out, 1.0, atol=1e-3)      # DC level preserved
+    assert _resample(sig, 16000, 16000).shape[0] == sig.shape[0]   # no-op when equal
+    assert _resample(np.zeros(0, dtype=np.float32), 48000, 16000).size == 0  # empty safe
+
+
 def test_audio_resolve_device_preference_list():
     from yap import audio
 

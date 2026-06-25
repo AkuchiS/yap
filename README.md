@@ -111,6 +111,12 @@ yap config set audio.device '["MacBook Pro Microphone", "Studio Display"]'
 
 `yap devices` prints `yap will use: …` for your current setup so you can confirm.
 
+yap captures at the mic's **native sample rate** and resamples internally, so
+mics that only run at 48 kHz (common on external displays) work too. If the
+indicator lights up but nothing gets transcribed, run `yap run --debug` in a
+terminal — yap now prints exactly why (couldn't open the mic, no audio arrived,
+or captured silence).
+
 ### Plays nice with other voice apps (context-aware handoff)
 
 yap only holds the mic *while you hold the hotkey*, so it doesn't fight your

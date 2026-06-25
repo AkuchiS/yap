@@ -75,9 +75,14 @@ DEFAULT_CONFIG: dict[str, Any] = {
         "trailing_space": True,      # append a space so words don't run together
     },
     "audio": {
-        "samplerate": 16000,
+        "samplerate": 16000,         # target rate for the recognizer (Whisper wants 16k)
+        "capture_samplerate": None,  # None = capture at the mic's native rate, then
+                                     # resample to `samplerate`. Set a number to force it.
         "channels": 1,
-        "device": None,              # input device index or name substring; None = default
+        # Input device: index, name substring, None = system default, or an ordered
+        # list of names tried in turn (great for laptops that dock to displays), e.g.
+        # ["MacBook Pro Microphone", "Studio Display"].
+        "device": None,
         "max_seconds": 120,          # hard cap so a stuck recording can't run forever
     },
     # Words/names to bias recognition toward, so jargon and proper nouns come

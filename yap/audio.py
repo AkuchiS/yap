@@ -62,20 +62,54 @@ def resolve_device(spec):
     return idx
 
 
+def _resample(audio: "np.ndarray", src_sr: int, dst_sr: int) -> "np.ndarray":
+    """Lightweight linear resample (no scipy). src_sr -> dst_sr."""
+    if src_sr == dst_sr or audio.size == 0:
+        return audio.astype(np.float32)
+    duration = audio.shape[0] / float(src_sr)
+    n_out = int(round(duration * dst_sr))
+    if n_out <= 0:
+        return audio[:0].astype(np.float32)
+    x_old = np.linspace(0.0, duration, num=audio.shape[0], endpoint=False)
+    x_new = np.linspace(0.0, duration, num=n_out, endpoint=False)
+    return np.interp(x_new, x_old, audio).astype(np.float32)
+
+
 class Recorder:
     def __init__(self, cfg: dict[str, Any]):
-        self.samplerate = int(cfg.get("samplerate", 16000))
+        self.target_sr = int(cfg.get("samplerate", 16000))
+        self.capture_sr = cfg.get("capture_samplerate")  # None/0 = native rate
         self.channels = int(cfg.get("channels", 1))
-        self.device = cfg.get("device")  # int index, name substring, or None
+        self.device = cfg.get("device")  # int, name substring, list, or None
         self.max_seconds = float(cfg.get("max_seconds", 120))
 
     def _resolve_device(self):
         return resolve_device(self.device)
 
-    def record_until(self, stop: threading.Event) -> Optional["np.ndarray"]:
-        """Block until `stop` is set (or max_seconds elapses). Return mono float32."""
+    def _pick_capture_sr(self, device) -> int:
+        """The rate to actually open the mic at. Many external-display/dock mics
+        only run at 48 kHz, so forcing 16 kHz makes them open but deliver nothing —
+        capture at the device's native rate and resample afterwards."""
+        if self.capture_sr:
+            return int(self.capture_sr)
         import sounddevice as sd
 
+        try:
+            info = (sd.query_devices(device, "input") if device is not None
+                    else sd.query_devices(kind="input"))
+            sr = int(round(info.get("default_samplerate") or 0))
+            return sr if sr > 0 else self.target_sr
+        except Exception:
+            return self.target_sr
+
+    def record_until(self, stop: threading.Event) -> Optional["np.ndarray"]:
+        """Block until `stop` is set (or max_seconds elapses). Return mono float32
+        at `target_sr`. Returns None — with a clear reason on stderr — if the mic
+        can't be opened or delivers no audio."""
+        import sounddevice as sd
+
+        device = self._resolve_device()
+        capture_sr = self._pick_capture_sr(device)
         q: "queue.Queue[np.ndarray]" = queue.Queue()
 
         def callback(indata, _frames, _time, status):
@@ -84,15 +118,22 @@ class Recorder:
             q.put(indata.copy())
 
         chunks: list[np.ndarray] = []
-        max_frames = int(self.max_seconds * self.samplerate)
+        max_frames = int(self.max_seconds * capture_sr)
         total = 0
-        with sd.InputStream(
-            samplerate=self.samplerate,
-            channels=self.channels,
-            dtype="float32",
-            device=self._resolve_device(),
-            callback=callback,
-        ):
+        try:
+            stream = sd.InputStream(
+                samplerate=capture_sr,
+                channels=self.channels,
+                dtype="float32",
+                device=device,
+                callback=callback,
+            )
+        except Exception as e:
+            print(f"yap: couldn't open mic (device={device!r} @ {capture_sr} Hz): {e}\n"
+                  f"     run `yap devices`, then pin one: "
+                  f"yap config set audio.device '\"<name>\"'", file=sys.stderr)
+            return None
+        with stream:
             while not stop.is_set():
                 try:
                     chunk = q.get(timeout=0.1)
@@ -110,11 +151,18 @@ class Recorder:
             except queue.Empty:
                 break
         if not chunks:
+            print(f"yap: mic opened (device={device!r} @ {capture_sr} Hz) but no audio "
+                  f"arrived — is the right input selected? run `yap devices`.", file=sys.stderr)
             return None
         audio = np.concatenate(chunks, axis=0)
         if audio.ndim > 1:  # downmix to mono
             audio = audio.mean(axis=1)
-        return audio.astype(np.float32)
+        audio = audio.astype(np.float32)
+        peak = float(np.max(np.abs(audio))) if audio.size else 0.0
+        if peak < 1e-4:  # frames arrived but flat-line → wrong/muted mic
+            print(f"yap: captured audio is silent (peak={peak:.1e}) — the selected mic may "
+                  f"be muted or wrong; run `yap devices`.", file=sys.stderr)
+        return _resample(audio, capture_sr, self.target_sr)
 
 
 def list_devices(cfg: "dict | None" = None) -> str:
