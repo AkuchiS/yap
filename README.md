@@ -55,8 +55,11 @@ yap run
 nothing pollutes your system Python. Then hold **Right Option**, speak, and let
 go; your words land at the cursor.
 
-> Prefer a one-liner? `pipx install git+https://github.com/AkuchiS/yap`
-> does the same thing.
+> Prefer a one-liner?
+> `pipx install "yap-dictation[full] @ git+https://github.com/AkuchiS/yap"`
+> does the same thing. The `[full]` extra pulls in the macOS menu-bar bits
+> (`rumps`); plain `git+…` installs the core CLI only, so `yap app` won't start
+> without it.
 
 ### Per-OS extras
 
