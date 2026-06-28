@@ -17,9 +17,42 @@ Counts persist to <config_dir>/learned.json, so it keeps learning across runs.
 
 from __future__ import annotations
 
+import difflib
 import json
 import re
 from typing import Any
+
+_STRIP = " \t\n.,;:!?\"'()[]{}"
+
+
+def diff_corrections(old_text: str, new_text: str):
+    """Compare what yap typed (`old_text`) with your corrected version (`new_text`)
+    and return (fixes, casings):
+
+      * fixes:   {heard_lower: wanted}  — spelling corrections → vocab replacements
+      * casings: [Word, ...]            — casing-only fixes    → vocabulary entries
+
+    Aligns on lower-cased words (so casing changes don't look like replacements),
+    then takes only clean 1:1 word substitutions and casing-only differences —
+    insertions/deletions and messy multi-word edits are ignored, on purpose.
+    """
+    old, new = (old_text or "").split(), (new_text or "").split()
+    sm = difflib.SequenceMatcher(a=[w.lower() for w in old],
+                                 b=[w.lower() for w in new], autojunk=False)
+    fixes: dict[str, str] = {}
+    casings: list[str] = []
+    for tag, i1, i2, j1, j2 in sm.get_opcodes():
+        if tag == "equal":  # same words case-insensitively → look for casing-only edits
+            for ow, nw in zip(old[i1:i2], new[j1:j2]):
+                o, n = ow.strip(_STRIP), nw.strip(_STRIP)
+                if o and n and o != n and o.lower() == n.lower() and n not in casings:
+                    casings.append(n)
+        elif tag == "replace" and (i2 - i1) == (j2 - j1):  # clean 1:1 substitutions
+            for ow, nw in zip(old[i1:i2], new[j1:j2]):
+                o, n = ow.strip(_STRIP), nw.strip(_STRIP)
+                if o and n and o.lower() != n.lower():
+                    fixes[o.lower()] = n
+    return fixes, casings
 
 from .config import config_dir
 

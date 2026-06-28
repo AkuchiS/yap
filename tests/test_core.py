@@ -191,6 +191,22 @@ def test_license_grandfather_code_roundtrip_and_cutoff():
         os.environ.pop("YAP_CONFIG_DIR", None)
 
 
+def test_diff_corrections():
+    from yap.learn import diff_corrections
+
+    # casing-only edits → casings; identical otherwise
+    fixes, casings = diff_corrections("email dime about akuchis", "email DIME about AkuchiS")
+    assert fixes == {} and set(casings) == {"DIME", "AkuchiS"}
+    # spelling fix → replacement
+    fixes, casings = diff_corrections("send philanthropic the file", "send Anthropic the file")
+    assert fixes == {"philanthropic": "Anthropic"} and casings == []
+    # mixed + punctuation tolerance
+    fixes, casings = diff_corrections("tell dime, and philanthropic", "tell DIME, and Anthropic")
+    assert casings == ["DIME"] and fixes == {"philanthropic": "Anthropic"}
+    # no change → nothing learned
+    assert diff_corrections("hello world", "hello world") == ({}, [])
+
+
 def test_normalize_case_from_vocab():
     from yap.text import normalize_case
 

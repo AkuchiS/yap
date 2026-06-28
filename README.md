@@ -224,6 +224,17 @@ the way you want it written and yap fixes the casing every time — no retyping:
 yap vocab add AkuchiS DIME PostgreSQL   # now "akuchis"/"dime" come out AkuchiS/DIME
 ```
 
+### Learn from a correction
+
+Fixed something yap got wrong? Teach it in one step: correct the text, **select and
+copy** it, then run `yap relearn`. yap diffs your clipboard against what it last typed
+and saves the differences — casing fixes go to your vocabulary, spelling fixes become
+replacements. Nothing runs in the background watching you; *you* trigger it.
+
+```bash
+yap relearn      # right after copying your corrected text
+```
+
 ### It also learns on its own
 
 By default yap **watches what you dictate** and learns the proper nouns, jargon,

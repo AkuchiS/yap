@@ -105,6 +105,44 @@ def _cmd_devices(_args) -> int:
     return 0
 
 
+def _cmd_relearn(_args) -> int:
+    """Learn from your last correction: diff the clipboard (your fixed text) against
+    what yap last typed, and save the word-level changes as fixes / casings."""
+    from .inject import clipboard_get
+    from .learn import diff_corrections
+
+    last_path = config.config_dir() / "last_injection.txt"
+    if not last_path.exists():
+        print("yap: nothing to relearn from yet — dictate something first.", file=sys.stderr)
+        return 1
+    last = last_path.read_text(encoding="utf-8").strip()
+    corrected = (clipboard_get() or "").strip()
+    if not corrected:
+        print("yap: clipboard is empty — fix the text, then select & copy it first.", file=sys.stderr)
+        return 2
+    if corrected == last:
+        print("No difference between the clipboard and the last dictation — nothing to learn.")
+        return 0
+    fixes, casings = diff_corrections(last, corrected)
+    if not fixes and not casings:
+        print("Couldn't spot a clean word-level correction (too many changes between them).")
+        return 0
+    cfg = config.load()
+    cfg.setdefault("replacements", {}).update(fixes)
+    vocab = cfg.setdefault("vocabulary", [])
+    for c in casings:
+        if c not in vocab:
+            vocab.append(c)
+    config.save(cfg)
+    print("Learned from your correction:")
+    for k, v in fixes.items():
+        print(f"  fix    {k!r} → {v!r}")
+    for c in casings:
+        print(f"  casing → {c}")
+    print("Restart yap to apply.")
+    return 0
+
+
 def _cmd_update(args) -> int:
     from . import update as _update
 
@@ -313,6 +351,10 @@ def build_parser() -> argparse.ArgumentParser:
     pl.add_argument("--verify", metavar="CODE",
                     help=f"verify a grandfather code (needs {'YAP_LICENSE_SECRET'})")
     pl.set_defaults(func=_cmd_license)
+
+    prl = sub.add_parser("relearn",
+                         help="learn from your last correction (fix the text, copy it, run this)")
+    prl.set_defaults(func=_cmd_relearn)
 
     pup = sub.add_parser("update", help="check for a newer yap release")
     pup.add_argument("--apply", action="store_true",

@@ -120,6 +120,10 @@ class App:
             self._log(f"  ({secs:.1f}s audio, {dt:.1f}s transcribe)", 2)
             self.injector.inject(text)
             self._log("… injected at cursor", 2)
+            try:  # remember it so `yap relearn` can diff your correction against it
+                (config.config_dir() / "last_injection.txt").write_text(text, encoding="utf-8")
+            except Exception:
+                pass
             # learn from what you just said; fold new words into future biasing
             learned = self.learner.observe(text)
             if learned:
