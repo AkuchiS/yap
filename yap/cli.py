@@ -189,9 +189,12 @@ def _cmd_doctor(args) -> int:
 
 
 def _cmd_app(_args) -> int:
-    from . import menubar
-
-    return menubar.run(config.load())
+    cfg = config.load()
+    if sys.platform == "darwin":
+        from . import menubar
+        return menubar.run(cfg)
+    from . import tray  # Windows/Linux system-tray equivalent
+    return tray.run(cfg)
 
 
 def _cmd_icon(args) -> int:
@@ -326,7 +329,7 @@ def build_parser() -> argparse.ArgumentParser:
     pv.add_argument("words", nargs="*", help="word(s); for 'fix': <heard> <wanted>")
     pv.set_defaults(func=_cmd_vocab)
 
-    pa = sub.add_parser("app", help="run the macOS menu-bar app (like Wispr)")
+    pa = sub.add_parser("app", help="run the tray app (menu-bar on macOS, system tray on Win/Linux)")
     pa.set_defaults(func=_cmd_app)
 
     pi = sub.add_parser("icon", help="set a custom Dock icon for the app")

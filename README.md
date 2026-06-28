@@ -77,7 +77,7 @@ go; your words land at the cursor.
 
 ```bash
 yap run                       # start the daemon; hold your hotkey and talk
-yap app                       # macOS menu-bar app (like Wispr)
+yap app                       # tray app: menu-bar (macOS) / system tray (Win/Linux)
 yap transcribe meeting.m4a    # one-shot: transcribe a file, print the text
 yap vocab add PostgreSQL      # teach it your words (see below)
 yap hardware                  # show your specs + the model it'll auto-pick

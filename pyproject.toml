@@ -37,7 +37,7 @@ macos = ["rumps>=0.4.0; sys_platform == 'darwin'"]
 # OS-appropriate icon shaping for `yap icon`.
 icons = ["pillow>=9.0"]
 # Everything for the best desktop experience.
-full = ["pyperclip>=1.8", "pillow>=9.0", "rumps>=0.4.0; sys_platform == 'darwin'"]
+full = ["pyperclip>=1.8", "pillow>=9.0", "rumps>=0.4.0; sys_platform == 'darwin'", "pystray>=0.19.4; sys_platform != 'darwin'"]
 
 [project.scripts]
 yap = "yap.cli:main"

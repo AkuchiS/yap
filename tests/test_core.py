@@ -191,6 +191,15 @@ def test_license_grandfather_code_roundtrip_and_cutoff():
         os.environ.pop("YAP_CONFIG_DIR", None)
 
 
+def test_tray_state_image():
+    from yap.tray import _state_image
+
+    img = _state_image("listening", 64)
+    assert img.size == (64, 64) and img.mode == "RGBA"
+    # different states render a different-coloured dot
+    assert _state_image("idle").getpixel((32, 32)) != _state_image("listening").getpixel((32, 32))
+
+
 def test_app_profiles_resolve():
     from yap.config import profile_for
 
