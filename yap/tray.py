@@ -81,19 +81,34 @@ def run(cfg: dict[str, Any]) -> int:
         try:
             if listener is not None:
                 listener.stop()
+            logic.stop_relearn()
         except Exception:
             pass
         _icon.stop()
 
+    def _relearn(_icon, _item) -> None:
+        try:
+            logic.on_relearn()  # reads clipboard, diffs vs last typed, notifies
+        except Exception:
+            pass
+
     menu = pystray.Menu(
         pystray.MenuItem(lambda _i: _LABEL.get(state["s"], _LABEL["idle"]),
                          None, enabled=False),
+        pystray.MenuItem("Learn from my last correction", _relearn),
         pystray.MenuItem(lambda _i: f"Engine: {logic.engine.name}  (click to switch)",
                          _toggle_engine),
         pystray.MenuItem("Quit yap", _quit),
     )
     icon = pystray.Icon("yap", _state_image("idle"), _LABEL["idle"], menu)
     logic.status_cb = _set
+
+    def _notify(msg):
+        try:
+            icon.notify(str(msg), "yap")
+        except Exception:
+            pass
+    logic.notify_cb = _notify
 
     listener = logic.start_background()  # hotkey + engine, off the tray loop
     icon.run()                          # blocks until Quit

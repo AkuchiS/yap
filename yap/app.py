@@ -35,11 +35,15 @@ class App:
         # Optional callback for a GUI (menu-bar app) to reflect state:
         # called with "idle" | "listening" | "transcribing".
         self.status_cb = None
+        # Optional GUI notifier for one-off messages (e.g. "Learned: DIME").
+        self.notify_cb = None
 
         self._stop_event = threading.Event()
         self._record_thread: Optional[threading.Thread] = None
         self._audio: Optional[np.ndarray] = None
         self._busy = threading.Lock()  # don't start while still transcribing
+        self._last_injection = ""      # what we last typed (for `relearn`)
+        self._relearn_listener = None
 
     def _status(self, state: str) -> None:
         if self.status_cb:
@@ -55,6 +59,57 @@ class App:
             self.engine.prompt = build_prompt(words)
         except Exception:
             pass
+
+    def _notify(self, msg: str) -> None:
+        """One-off message to the user — via the GUI notifier if set, else the log."""
+        if self.notify_cb:
+            try:
+                self.notify_cb(msg)
+                return
+            except Exception:
+                pass
+        self._log(msg, 1)
+
+    def _said(self, msg: str) -> str:
+        self._notify(msg)
+        return msg
+
+    def on_relearn(self) -> str:
+        """Learn from your last correction: diff the clipboard (your fixed text)
+        against what yap last typed, save the changes, and hot-apply (no restart).
+        Triggered by the relearn hotkey or the menu-bar / tray item."""
+        from .inject import clipboard_get
+        from .learn import diff_corrections
+
+        last = (getattr(self, "_last_injection", "") or "").strip()
+        if not last:
+            return self._said("Nothing to relearn yet — dictate something first.")
+        corrected = (clipboard_get() or "").strip()
+        if not corrected or corrected == last:
+            return self._said("Copy your corrected text first, then trigger relearn.")
+        fixes, casings = diff_corrections(last, corrected)
+        if not fixes and not casings:
+            return self._said("No clear correction spotted between them.")
+        cfg = config.load()
+        cfg.setdefault("replacements", {}).update(fixes)
+        vocab = cfg.setdefault("vocabulary", [])
+        for c in casings:
+            if c not in vocab:
+                vocab.append(c)
+        config.save(cfg)
+        self.cfg = cfg  # hot-apply: the next utterance uses it (no restart)
+        try:
+            self._refresh_prompt()
+        except Exception:
+            pass
+        return self._said("Learned: " + ", ".join(list(fixes.values()) + casings))
+
+    def stop_relearn(self) -> None:
+        if self._relearn_listener is not None:
+            try:
+                self._relearn_listener.stop()
+            except Exception:
+                pass
 
     # ---- hotkey callbacks ---------------------------------------------------
     def on_start(self):
@@ -120,7 +175,8 @@ class App:
             self._log(f"  ({secs:.1f}s audio, {dt:.1f}s transcribe)", 2)
             self.injector.inject(text)
             self._log("… injected at cursor", 2)
-            try:  # remember it so `yap relearn` can diff your correction against it
+            self._last_injection = text  # in-app relearn (hotkey / menu)
+            try:  # also persist so the `yap relearn` CLI can use it
                 (config.config_dir() / "last_injection.txt").write_text(text, encoding="utf-8")
             except Exception:
                 pass
@@ -158,6 +214,15 @@ class App:
         except Exception as e:
             self._log(f"yap: warmup failed: {e}", 0)
         self._status("idle")
+        # optional second global hotkey: learn from your last correction
+        relearn = (self.cfg.get("hotkey") or {}).get("relearn")
+        if relearn:
+            try:
+                from pynput import keyboard
+                self._relearn_listener = keyboard.GlobalHotKeys({relearn: self.on_relearn})
+                self._relearn_listener.start()
+            except Exception as e:
+                self._log(f"yap: relearn hotkey unavailable ({e})", 2)
         return HotkeyListener(combo, mode, self.on_start, self.on_stop).start()
 
     def run(self):
@@ -175,6 +240,7 @@ class App:
             self._log("\nyap: bye.", 1)
         finally:
             listener.stop()
+            self.stop_relearn()
 
 
 def _version() -> str:

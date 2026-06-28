@@ -122,12 +122,14 @@ def run(cfg: dict[str, Any]) -> int:
                 self.status_item,
                 rumps.MenuItem(describe_mode(mode, combo)),
                 None,
+                rumps.MenuItem("Learn from my last correction", callback=self._relearn),
                 rumps.MenuItem(f"Engine: {logic.engine.name}  ·  switch to {other}",
                                callback=self._toggle_engine),
                 None,
                 rumps.MenuItem("Quit Yap", callback=self._quit),
             ]
             logic.status_cb = self._on_status
+            logic.notify_cb = self._notify_user
             self._listener = None
             # start the engine off the main thread so the menu appears instantly
             threading.Thread(target=self._boot, daemon=True).start()
@@ -211,6 +213,21 @@ def run(cfg: dict[str, Any]) -> int:
                 self.status_item.title = sub
             self._main(apply)
 
+        def _relearn(self, _sender):
+            try:
+                logic.on_relearn()   # reads clipboard, diffs vs last typed, notifies
+            except Exception as e:
+                self._notify_user(f"relearn failed: {e}")
+
+        def _notify_user(self, msg):
+            def show():
+                self.status_item.title = msg
+                try:
+                    rumps.notification("yap", "", msg)
+                except Exception:
+                    pass
+            self._main(show)
+
         def _toggle_engine(self, sender):
             # flip local <-> cloud for the *next* launch (engine is built at start)
             new = "cloud" if logic.engine.name == "local" else "local"
@@ -227,6 +244,7 @@ def run(cfg: dict[str, Any]) -> int:
         def _quit(self, _sender):
             if self._listener is not None:
                 self._listener.stop()
+            logic.stop_relearn()
             rumps.quit_application()
 
     YapBar().run()

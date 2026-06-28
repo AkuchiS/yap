@@ -226,14 +226,18 @@ yap vocab add AkuchiS DIME PostgreSQL   # now "akuchis"/"dime" come out AkuchiS/
 
 ### Learn from a correction
 
-Fixed something yap got wrong? Teach it in one step: correct the text, **select and
-copy** it, then run `yap relearn`. yap diffs your clipboard against what it last typed
-and saves the differences — casing fixes go to your vocabulary, spelling fixes become
-replacements. Nothing runs in the background watching you; *you* trigger it.
+Fixed something yap got wrong? Teach it in one move: correct the text, **select and
+copy** it, then press the **relearn hotkey** (default **⌘⌥L** on macOS, **Ctrl+Alt+L**
+elsewhere) — or click **"Learn from my last correction"** in the menu-bar / tray. yap
+diffs your clipboard against what it last typed and saves the differences: casing fixes
+go to your vocabulary, spelling fixes become replacements — applied immediately, no
+restart. Nothing runs in the background watching you; *you* trigger it.
 
 ```bash
-yap relearn      # right after copying your corrected text
+yap config set hotkey.relearn '"<cmd>+<alt>+l"'   # change it, or "" to disable
 ```
+
+(There's also a plain `yap relearn` on the command line if you prefer.)
 
 ### It also learns on its own
 

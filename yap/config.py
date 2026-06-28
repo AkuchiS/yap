@@ -68,6 +68,10 @@ DEFAULT_CONFIG: dict[str, Any] = {
         # "hold"  : record only while the combo is held down (push-to-talk).
         # "toggle": press once to start, press again to stop.
         "mode": "hold",
+        # "Learn from my last correction": fix the text, copy it, then press this —
+        # yap diffs your clipboard against what it last typed and saves the changes.
+        # Set to "" to disable (the menu-bar / tray item does the same thing).
+        "relearn": "<cmd>+<alt>+l" if sys.platform == "darwin" else "<ctrl>+<alt>+l",
     },
     "inject": {
         "method": "paste",           # "paste" (clipboard + Ctrl/Cmd+V) | "type"
