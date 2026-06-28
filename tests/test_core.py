@@ -191,6 +191,33 @@ def test_license_grandfather_code_roundtrip_and_cutoff():
         os.environ.pop("YAP_CONFIG_DIR", None)
 
 
+def test_app_profiles_resolve():
+    from yap.config import profile_for
+
+    base = {
+        "cleanup": {"enabled": False},
+        "replacements": {"a": "A"},
+        "vocabulary": ["Base"],
+        "app_profiles": {
+            "Slack": {"cleanup": {"enabled": True}},
+            "Terminal": {"vocabulary": ["kubectl", "stderr"]},
+        },
+    }
+    # no active app → base object returned unchanged
+    assert profile_for(base, None) is base
+    assert profile_for(base, "Photoshop") is base          # no match → base
+    # exact match deep-merges (cleanup flips, untouched keys preserved)
+    s = profile_for(base, "Slack")
+    assert s["cleanup"]["enabled"] is True
+    assert s["replacements"] == {"a": "A"} and s["vocabulary"] == ["Base"]
+    # substring match either direction ("Slack — chat" contains "Slack")
+    assert profile_for(base, "Slack — chat")["cleanup"]["enabled"] is True
+    # profile vocabulary overrides for that app
+    assert "kubectl" in profile_for(base, "Terminal")["vocabulary"]
+    # base is not mutated by a merge
+    assert base["cleanup"]["enabled"] is False
+
+
 def test_update_version_compare():
     from yap.update import _parse_version, _is_newer
 

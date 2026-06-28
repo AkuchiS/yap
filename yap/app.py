@@ -9,7 +9,7 @@ from typing import Any, Optional
 
 import numpy as np
 
-from . import cleanup
+from . import cleanup, config
 from .audio import Recorder
 from .hotkey import HotkeyListener, combo_warning, describe_mode
 from .inject import Injector
@@ -99,10 +99,18 @@ class App:
                 self._log(f"… too short ({secs:.2f}s), ignored", 2)
                 return
             self._log(f"… transcribing {secs:.1f}s…", 2)
+            # per-app profile: merge the frontmost app's overrides over the base for
+            # this utterance (vocabulary biasing, cleanup, replacements, language).
+            eff = config.profile_for(self.cfg, getattr(self, "_active_app", None))
+            try:
+                self.engine.prompt = build_prompt(
+                    list(eff.get("vocabulary", [])) + self.learner.words())
+            except Exception:
+                pass
             t0 = time.time()
             text = self.engine.transcribe_array(audio, self.samplerate)
-            text = cleanup.maybe_clean(text, self.cfg)
-            text = apply_replacements(text, self.cfg.get("replacements"))
+            text = cleanup.maybe_clean(text, eff)
+            text = apply_replacements(text, eff.get("replacements"))
             dt = time.time() - t0
             if not text:
                 self._log("… no speech detected — try speaking louder/closer", 1)

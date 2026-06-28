@@ -163,6 +163,22 @@ By default yap is **push-to-talk on a single key** (like Wispr's "hold to
 dictate"): **hold Right Option ⌥** on macOS (Right Ctrl elsewhere), speak, and
 release to transcribe.
 
+### Per-app profiles
+
+Dictating into different apps? Give each one its own settings. yap merges the
+matching app's overrides over your base config **for that utterance**, matched by
+the frontmost app's name — perfect for app-specific jargon, or turning the LLM
+cleanup on in chat but off in your terminal:
+
+```bash
+yap config set 'app_profiles.Slack.cleanup.enabled' true
+yap config set 'app_profiles.Terminal.vocabulary' '["kubectl","stderr","grep"]'
+yap config set 'app_profiles.Code.local.language' '"en"'
+```
+
+Matching is exact first, then a case-insensitive substring (so `Slack` also matches
+an app reported as `Slack — chat`). Anything you don't override falls back to base.
+
 ### Choosing a hotkey
 
 ```bash

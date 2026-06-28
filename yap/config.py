@@ -118,6 +118,13 @@ DEFAULT_CONFIG: dict[str, Any] = {
     "app": {
         "icon": "",
     },
+    # Per-app profiles: when you dictate INTO an app, its overrides are merged over
+    # the base config for that utterance — matched by exact name, else a
+    # case-insensitive substring of the frontmost app. Handy keys per profile:
+    # cleanup, replacements, vocabulary, local.language. Example:
+    #   yap config set 'app_profiles.Slack.cleanup.enabled' true
+    #   yap config set 'app_profiles.Terminal.vocabulary' '["kubectl","grep","stderr"]'
+    "app_profiles": {},
 }
 
 
@@ -157,6 +164,30 @@ def _deep_merge(base: dict, override: dict) -> dict:
         else:
             out[k] = v
     return out
+
+
+def profile_for(cfg: dict[str, Any], app_name: "str | None") -> dict[str, Any]:
+    """Base config merged with the matching per-app profile (or the base unchanged).
+
+    Match order: exact active-app name, then case-insensitive substring either way
+    (so a profile keyed `Slack` matches an active app reported as `Slack — chat`).
+    Returns the same `cfg` object when nothing matches, so callers can cheaply test
+    `result is cfg`.
+    """
+    profiles = cfg.get("app_profiles") or {}
+    if not app_name or not profiles:
+        return cfg
+    override = profiles.get(app_name)
+    if override is None:
+        al = app_name.lower()
+        for name, prof in profiles.items():
+            nl = (name or "").lower()
+            if nl and (nl in al or al in nl):
+                override = prof
+                break
+    if not isinstance(override, dict):
+        return cfg
+    return _deep_merge(cfg, override)
 
 
 def load() -> dict[str, Any]:
