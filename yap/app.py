@@ -240,11 +240,17 @@ class App:
             self._busy.release()
 
     # ---- lifecycle ----------------------------------------------------------
-    def start_background(self):
+    def start_background(self, use_global_hotkey: bool = True):
         """Warm up and start the hotkey listener without blocking.
 
         Returns the listener. Used by GUIs (the menu-bar app) that own the main
         loop themselves. Call listener.stop() to shut down.
+
+        Set ``use_global_hotkey=False`` to warm the engine and bring up the
+        control socket WITHOUT the pynput listener — the macOS menu-bar app uses
+        this and drives on_start/on_stop from its own main-thread Quartz key tap
+        (see ``yap/mac_tap.py``), the only listener macOS 26 trusts in-process.
+        Returns None in that case (the caller owns key capture).
         """
         combo = self.cfg["hotkey"]["combo"]
         mode = self.cfg["hotkey"]["mode"]
@@ -264,6 +270,9 @@ class App:
         self._ipc = ipc.Server(self._ipc_command).start()
         if is_wayland():
             self._log(_WAYLAND_HELP, 0)
+
+        if not use_global_hotkey:
+            return None  # caller drives on_start/on_stop (macOS Quartz key tap)
 
         # ONE listener handles BOTH the dictation hotkey and relearn. Never start a
         # second pynput listener — two concurrent ones abort the process on macOS

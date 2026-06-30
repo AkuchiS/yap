@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "yap-dictation"
-version = "0.1.10"
+version = "0.1.14"
 description = "Free, offline-first, cross-platform voice dictation — speak anywhere, get text at your cursor."
 readme = "README.md"
 license = { text = "MIT" }
@@ -32,12 +32,13 @@ dependencies = [
 [project.optional-dependencies]
 # Nicer cross-platform clipboard; native CLIs are used as a fallback otherwise.
 clipboard = ["pyperclip>=1.8"]
-# macOS menu-bar app (`yap app`).
-macos = ["rumps>=0.4.0; sys_platform == 'darwin'"]
+# macOS menu-bar app (`yap app`). AVFoundation is used to explicitly request the
+# Microphone grant (CoreAudio stream-open doesn't reliably prompt for our app).
+macos = ["rumps>=0.4.0; sys_platform == 'darwin'", "pyobjc-framework-AVFoundation>=9.0; sys_platform == 'darwin'"]
 # OS-appropriate icon shaping for `yap icon`.
 icons = ["pillow>=9.0"]
 # Everything for the best desktop experience.
-full = ["pyperclip>=1.8", "pillow>=9.0", "rumps>=0.4.0; sys_platform == 'darwin'", "pystray>=0.19.4; sys_platform != 'darwin'"]
+full = ["pyperclip>=1.8", "pillow>=9.0", "rumps>=0.4.0; sys_platform == 'darwin'", "pyobjc-framework-AVFoundation>=9.0; sys_platform == 'darwin'", "pystray>=0.19.4; sys_platform != 'darwin'"]
 
 [project.scripts]
 yap = "yap.cli:main"

@@ -22,10 +22,11 @@ from yap.cli import main
 
 if len(sys.argv) == 1:
     # Double-clicked with no args → the menu-bar app on macOS (icon + menu),
-    # the run daemon elsewhere. The menu-bar app is now crash-safe on macOS 26:
-    # it's a thin UI that spawns a SEPARATE headless `yap run` daemon for the
-    # keyboard work, so the UI process never touches the Text Input Source API
-    # that aborts when used off the main thread (see yap/menubar.py).
+    # the run daemon elsewhere. The menu-bar app runs the dictation engine
+    # in-process and captures the hotkey via a MAIN-THREAD Quartz key tap
+    # (see yap/mac_tap.py): trusted by macOS TCC (it's this granted process,
+    # not a spawned child) and crash-safe on macOS 26 (the Text Input Source
+    # API is only ever touched on the main thread).
     sys.argv.append("app" if sys.platform == "darwin" else "run")
 
 raise SystemExit(main())

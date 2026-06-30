@@ -54,7 +54,7 @@ jobs:
             security import cert.p12 -k "$KCHAIN" -P "$CERT_PASSWORD" -T /usr/bin/codesign
             security list-keychains -d user -s "$KCHAIN" login.keychain
             security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KPW" "$KCHAIN" >/dev/null
-            codesign --force --deep --options runtime --timestamp --sign "$SIGN_IDENTITY" dist/Yap.app
+            codesign --force --deep --options runtime --timestamp --entitlements packaging/entitlements.plist --sign "$SIGN_IDENTITY" dist/Yap.app
           else
             codesign --force --deep --sign - dist/Yap.app || true
           fi

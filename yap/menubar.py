@@ -1,13 +1,18 @@
-"""macOS menu-bar app — the icon-in-the-menu-bar experience.
+"""macOS menu-bar app — the icon-in-the-menu-bar dictation experience.
 
-Architecture (important): the menu-bar process is a **thin UI only**. The actual
-dictation — the global keyboard listener + paste injection — runs in a SEPARATE
-`yap run` daemon process that this app spawns and talks to over the control
-socket (`yap.ipc`). That separation is deliberate: macOS 26 aborts a process that
-touches the Text Input Source API off the main thread, which is exactly what a
-keyboard listener does inside an app event loop. By keeping the listener in its
-own headless process (which has no app event loop), the menu-bar app can show its
-icon and menu without ever risking that crash.
+Architecture (important): EVERYTHING runs in THIS process — the trusted Yap.app
+the user grants. The global hotkey is a Quartz CGEventTap installed on the MAIN
+run loop (see ``yap/mac_tap.py``); its callback fires on the main thread, which
+is the rule macOS 26 enforces for a UI app touching the Text Input Source API.
+Recording, transcription and injection run in-process too, so the Accessibility /
+Input-Monitoring / Microphone grants the user gives Yap.app actually apply to the
+code doing the work.
+
+This replaced the earlier design that spawned a separate ``yap run`` daemon for
+the keyboard/mic work: macOS TCC does NOT extend an app's permission grant to a
+process it spawns, so that child was reported "not trusted" and recorded silence.
+Keeping the listener in THIS process, on the main thread, satisfies both
+constraints at once — trusted AND crash-free on macOS 26.
 
 Requires `rumps` (macOS only):  pip install "yap-dictation[macos]"
 Launch with:  yap app
@@ -15,31 +20,21 @@ Launch with:  yap app
 
 from __future__ import annotations
 
-import os
-import subprocess
 import sys
 import threading
-import time
 from typing import Any, Optional
 
-from . import config, ipc
+from . import config
 
 # Menu-bar state glyphs (used as the title; the brand icon, if available, sits
 # beside them). Kept as text so the app needs no asset files to show *something*.
 _GLYPH = {"idle": "🎙", "listening": "🔴", "transcribing": "⏳", "starting": "…"}
 
 
-def _daemon_command() -> list[str]:
-    """Command that launches the headless dictation daemon as a child process."""
-    if getattr(sys, "frozen", False):       # inside the bundled Yap.app
-        return [sys.executable, "run", "--quiet"]
-    return [sys.executable, "-m", "yap", "run", "--quiet"]
-
-
 def _request_permissions() -> None:
-    """Ask macOS for the permissions the daemon needs so the app *appears* in
-    System Settings → Privacy & Security and can be granted. The daemon (our child,
-    same code-signed identity) is covered by the grant given to this app."""
+    """Ask macOS for the permissions yap needs so Yap.app *appears* in System
+    Settings → Privacy & Security and can be granted. Because capture now runs in
+    THIS process, the grant the user gives here is the grant the key tap uses."""
     try:
         try:
             from ApplicationServices import (  # type: ignore
@@ -59,6 +54,56 @@ def _request_permissions() -> None:
         iokit.IOHIDRequestAccess(1)  # kIOHIDRequestTypeListenEvent (Input Monitoring)
     except Exception as e:
         print(f"yap: could not request Input Monitoring ({e})", file=sys.stderr)
+
+
+def _tee_logs_to_file() -> None:
+    """Send this process's stdout+stderr to ~/Library/Logs/yap.log so the
+    double-clicked .app — which has no terminal — leaves an inspectable trace
+    (engine state, the mic peak, the AVFoundation status, any error)."""
+    try:
+        import os
+        import time
+        logp = os.path.expanduser("~/Library/Logs/yap.log")
+        os.makedirs(os.path.dirname(logp), exist_ok=True)
+        f = open(logp, "a", buffering=1)
+        sys.stdout = f
+        sys.stderr = f
+        from . import __version__
+        print(f"\n=== yap {__version__} app start "
+              f"{time.strftime('%Y-%m-%d %H:%M:%S')} ===")
+    except Exception:
+        pass
+
+
+def _request_microphone(log=print) -> None:
+    """Explicitly ask macOS for the Microphone grant via AVFoundation — the only
+    way to make the prompt appear and create yap's entry in the Microphone pane
+    (it has no "+" to add an app by hand, and a CoreAudio stream-open won't
+    prompt). Call AFTER the run loop is up and the app is frontmost, or the
+    dialog may never show. Logs each step so a silent failure is diagnosable."""
+    try:
+        try:
+            from AVFoundation import AVCaptureDevice, AVMediaTypeAudio
+        except Exception:
+            from AVFoundation import AVCaptureDevice  # type: ignore
+            AVMediaTypeAudio = "soun"  # AVMediaTypeAudio constant value
+    except Exception as e:
+        log(f"yap: AVFoundation unavailable — cannot request Microphone ({e})")
+        return
+    try:
+        status = AVCaptureDevice.authorizationStatusForMediaType_(AVMediaTypeAudio)
+        log(f"yap: mic authorization status={status} "
+            "(0=notDetermined 1=restricted 2=denied 3=authorized)")
+        if status == 0:
+            AVCaptureDevice.requestAccessForMediaType_completionHandler_(
+                AVMediaTypeAudio,
+                lambda granted: log(f"yap: mic prompt answered granted={bool(granted)}"))
+            log("yap: requested microphone access — the allow dialog should appear")
+        elif status == 2:
+            log("yap: mic is DENIED — reset it then relaunch: "
+                "tccutil reset Microphone com.yap.dictation")
+    except Exception as e:
+        log(f"yap: microphone request failed ({e})")
 
 
 def _show_in_dock() -> None:
@@ -88,6 +133,7 @@ def run(cfg: dict[str, Any]) -> int:
         print("yap app: the menu-bar app is macOS-only for now. Use `yap run` "
               "elsewhere.", file=sys.stderr)
         return 2
+    _tee_logs_to_file()  # capture everything to ~/Library/Logs/yap.log for the .app
     try:
         import rumps
     except Exception:
@@ -96,12 +142,13 @@ def run(cfg: dict[str, Any]) -> int:
               file=sys.stderr)
         return 2
 
+    from . import mac_tap
+    from .app import App
     from .hotkey import describe_mode
 
     _request_permissions()
     icon_path = config.icon_path(cfg)
     mode, combo = cfg["hotkey"]["mode"], cfg["hotkey"]["combo"]
-    engine_name = cfg.get("engine", "local")
 
     class YapBar(rumps.App):
         def __init__(self):
@@ -110,7 +157,8 @@ def run(cfg: dict[str, Any]) -> int:
             if not (cfg.get("app", {}) or {}).get("menubar_only"):
                 _show_in_dock()
             _set_dock_icon(icon_path)
-            self._daemon: Optional[subprocess.Popen] = None  # the child we spawned
+            self.app: Optional[App] = None   # in-process engine (set once warm)
+            self.tap = None                  # main-thread Quartz key tap
             self.status_item = rumps.MenuItem("Starting the dictation engine…")
             self.menu = [
                 self.status_item,
@@ -121,12 +169,14 @@ def run(cfg: dict[str, Any]) -> int:
                 None,
                 rumps.MenuItem("Quit Yap", callback=self._quit),
             ]
+            # Install the key tap NOW, on this (the main) thread — it's trusted the
+            # moment the grants exist. Warm the heavy engine off the UI thread.
+            self._install_tap()
             threading.Thread(target=self._boot, daemon=True).start()
-            try:
-                self._poll = rumps.Timer(self._poll_status, 1.0)
-                self._poll.start()
-            except Exception:
-                pass
+            # Ask for the mic AFTER the run loop is live and the app is frontmost
+            # (a pre-run-loop request often never shows its dialog). One-shot.
+            self._mic_timer = rumps.Timer(self._ask_mic, 1.2)
+            self._mic_timer.start()
 
         # -- main-thread UI marshalling -------------------------------------
         def _main(self, fn):
@@ -139,47 +189,73 @@ def run(cfg: dict[str, Any]) -> int:
                 except Exception:
                     pass
 
-        # -- daemon lifecycle ------------------------------------------------
+        # -- microphone grant (main thread, post-launch) --------------------
+        def _ask_mic(self, timer):
+            timer.stop()
+            try:
+                from AppKit import NSApplication
+                NSApplication.sharedApplication().activateIgnoringOtherApps_(True)
+            except Exception:
+                pass
+            _request_microphone(print)
+
+        # -- key tap (main thread) ------------------------------------------
+        def _install_tap(self):
+            self.tap = mac_tap.start(cfg, on_start=self._hk_start,
+                                     on_stop=self._hk_stop,
+                                     on_relearn=self._hk_relearn)
+            if not getattr(self.tap, "ok", False):
+                self.status_item.title = (
+                    "Grant Yap Accessibility + Input Monitoring in System "
+                    "Settings, then reopen Yap")
+                why = getattr(self.tap, "error", None)
+                if why:
+                    print(f"yap: key tap not active: {why}", file=sys.stderr)
+
+        # The tap fires on the main thread; guard until the engine is warm.
+        def _hk_start(self):
+            if self.app is not None:
+                self.app.on_start()
+
+        def _hk_stop(self):
+            if self.app is not None:
+                self.app.on_stop()
+
+        def _hk_relearn(self):
+            if self.app is not None:
+                self.app.on_relearn()
+
+        # -- engine lifecycle (background) ----------------------------------
         def _boot(self):
-            """Reuse a running daemon if one's there; otherwise spawn one."""
-            ok, _ = ipc.send("ping")
-            if not ok:
-                try:
-                    logp = os.path.expanduser("~/Library/Logs/yap.log")
-                    os.makedirs(os.path.dirname(logp), exist_ok=True)
-                    logf = open(logp, "a")
-                    self._daemon = subprocess.Popen(_daemon_command(),
-                                                    stdout=logf, stderr=logf)
-                except Exception as e:
-                    self._main(lambda: setattr(self.status_item, "title",
-                                               f"couldn't start engine: {e}"))
-                    return
-            # wait (up to ~90s) for first-run model warmup, then mark ready
-            for _ in range(180):
-                time.sleep(0.5)
-                ok, _ = ipc.send("ping")
-                if ok:
-                    self._main(lambda: setattr(self.status_item, "title",
-                                               "Ready — hold your hotkey to dictate"))
-                    return
-            self._main(lambda: setattr(self.status_item, "title",
-                                       "engine didn't come up — see ~/Library/Logs/yap.log"))
+            try:
+                app = App(cfg)
+                app.status_cb = lambda st: self._main(lambda: self._reflect(st))
+                app.notify_cb = lambda m: self._main(lambda: self._notify(m))
+                # Warm the model + bring up the control socket, but NOT the pynput
+                # listener — the main-thread Quartz tap above owns key capture.
+                app.start_background(use_global_hotkey=False)
+                self.app = app
+                if getattr(self.tap, "ok", False):
+                    self._main(lambda: setattr(
+                        self.status_item, "title",
+                        "Ready — hold your hotkey to dictate"))
+            except Exception as e:
+                self._main(lambda: setattr(self.status_item, "title",
+                                           f"couldn't start engine: {e}"))
 
-        def _poll_status(self, _timer):
-            ok, reply = ipc.send("status")
-            state = "starting"
-            if ok:
-                state = "listening" if reply == "recording" else "idle"
-            self._main(lambda: setattr(self, "title", _GLYPH.get(state, _GLYPH["idle"])))
+        def _reflect(self, state):
+            self.title = _GLYPH.get(state, _GLYPH["idle"])
 
-        # -- menu actions (all driven over the control socket) ---------------
+        # -- menu actions ----------------------------------------------------
         def _toggle(self, _sender):
-            ipc.send("toggle")
+            if self.app is not None:
+                self.app.toggle()
 
         def _relearn(self, _sender):
-            ok, reply = ipc.send("relearn")
-            msg = reply if ok else "couldn't reach the dictation engine"
-            self._main(lambda: self._notify(msg))
+            if self.app is None:
+                self._notify("still starting the engine…")
+                return
+            self.app.on_relearn()  # result is surfaced via notify_cb
 
         def _notify(self, msg):
             self.status_item.title = msg
@@ -189,10 +265,9 @@ def run(cfg: dict[str, Any]) -> int:
                 pass
 
         def _quit(self, _sender):
-            # stop the daemon we started (leave a pre-existing one alone)
-            if self._daemon is not None:
+            if self.tap is not None:
                 try:
-                    self._daemon.terminate()
+                    self.tap.stop()
                 except Exception:
                     pass
             import rumps as _r

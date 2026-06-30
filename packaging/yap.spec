@@ -61,8 +61,8 @@ for pkg in ("av", "sounddevice", "pynput", "pyperclip", "rumps", "PIL", "numpy")
 if sys.platform == "darwin":
     hiddenimports += ["objc", "Foundation", "AppKit", "PyObjCTools",
                       "CoreFoundation", "Quartz", "ApplicationServices",
-                      "HIServices"]
-    for pkg in ("ApplicationServices",):
+                      "HIServices", "AVFoundation"]
+    for pkg in ("ApplicationServices", "AVFoundation"):
         _collect(pkg)
 
 # Built-in self-test clip so `yap selftest` works inside the frozen app.
