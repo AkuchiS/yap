@@ -54,23 +54,56 @@ def _request_permissions() -> None:
         iokit.IOHIDRequestAccess(1)  # kIOHIDRequestTypeListenEvent (Input Monitoring)
     except Exception as e:
         print(f"yap: could not request Input Monitoring ({e})", file=sys.stderr)
-    # Microphone: opening a CoreAudio/PortAudio input stream does NOT reliably
-    # surface the TCC prompt for our app (it just records zeros), so ask
-    # AVFoundation explicitly — the same up-front pattern as the two grants above.
-    # Without this the user has no way to grant the mic (the Microphone pane has
-    # no "+" to add an app manually); the request is what creates the entry.
+
+
+def _tee_logs_to_file() -> None:
+    """Send this process's stdout+stderr to ~/Library/Logs/yap.log so the
+    double-clicked .app — which has no terminal — leaves an inspectable trace
+    (engine state, the mic peak, the AVFoundation status, any error)."""
+    try:
+        import os
+        import time
+        logp = os.path.expanduser("~/Library/Logs/yap.log")
+        os.makedirs(os.path.dirname(logp), exist_ok=True)
+        f = open(logp, "a", buffering=1)
+        sys.stdout = f
+        sys.stderr = f
+        from . import __version__
+        print(f"\n=== yap {__version__} app start "
+              f"{time.strftime('%Y-%m-%d %H:%M:%S')} ===")
+    except Exception:
+        pass
+
+
+def _request_microphone(log=print) -> None:
+    """Explicitly ask macOS for the Microphone grant via AVFoundation — the only
+    way to make the prompt appear and create yap's entry in the Microphone pane
+    (it has no "+" to add an app by hand, and a CoreAudio stream-open won't
+    prompt). Call AFTER the run loop is up and the app is frontmost, or the
+    dialog may never show. Logs each step so a silent failure is diagnosable."""
     try:
         try:
             from AVFoundation import AVCaptureDevice, AVMediaTypeAudio
         except Exception:
-            from AVFoundation import AVCaptureDevice
+            from AVFoundation import AVCaptureDevice  # type: ignore
             AVMediaTypeAudio = "soun"  # AVMediaTypeAudio constant value
-        # 0 = notDetermined → prompt; 3 = authorized (leave it alone)
-        if AVCaptureDevice.authorizationStatusForMediaType_(AVMediaTypeAudio) == 0:
-            AVCaptureDevice.requestAccessForMediaType_completionHandler_(
-                AVMediaTypeAudio, lambda _granted: None)
     except Exception as e:
-        print(f"yap: could not request Microphone ({e})", file=sys.stderr)
+        log(f"yap: AVFoundation unavailable — cannot request Microphone ({e})")
+        return
+    try:
+        status = AVCaptureDevice.authorizationStatusForMediaType_(AVMediaTypeAudio)
+        log(f"yap: mic authorization status={status} "
+            "(0=notDetermined 1=restricted 2=denied 3=authorized)")
+        if status == 0:
+            AVCaptureDevice.requestAccessForMediaType_completionHandler_(
+                AVMediaTypeAudio,
+                lambda granted: log(f"yap: mic prompt answered granted={bool(granted)}"))
+            log("yap: requested microphone access — the allow dialog should appear")
+        elif status == 2:
+            log("yap: mic is DENIED — reset it then relaunch: "
+                "tccutil reset Microphone com.yap.dictation")
+    except Exception as e:
+        log(f"yap: microphone request failed ({e})")
 
 
 def _show_in_dock() -> None:
@@ -100,6 +133,7 @@ def run(cfg: dict[str, Any]) -> int:
         print("yap app: the menu-bar app is macOS-only for now. Use `yap run` "
               "elsewhere.", file=sys.stderr)
         return 2
+    _tee_logs_to_file()  # capture everything to ~/Library/Logs/yap.log for the .app
     try:
         import rumps
     except Exception:
@@ -139,6 +173,10 @@ def run(cfg: dict[str, Any]) -> int:
             # moment the grants exist. Warm the heavy engine off the UI thread.
             self._install_tap()
             threading.Thread(target=self._boot, daemon=True).start()
+            # Ask for the mic AFTER the run loop is live and the app is frontmost
+            # (a pre-run-loop request often never shows its dialog). One-shot.
+            self._mic_timer = rumps.Timer(self._ask_mic, 1.2)
+            self._mic_timer.start()
 
         # -- main-thread UI marshalling -------------------------------------
         def _main(self, fn):
@@ -150,6 +188,16 @@ def run(cfg: dict[str, Any]) -> int:
                     fn()
                 except Exception:
                     pass
+
+        # -- microphone grant (main thread, post-launch) --------------------
+        def _ask_mic(self, timer):
+            timer.stop()
+            try:
+                from AppKit import NSApplication
+                NSApplication.sharedApplication().activateIgnoringOtherApps_(True)
+            except Exception:
+                pass
+            _request_microphone(print)
 
         # -- key tap (main thread) ------------------------------------------
         def _install_tap(self):
