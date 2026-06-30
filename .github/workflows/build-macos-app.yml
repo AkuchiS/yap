@@ -1,0 +1,110 @@
+# → goes in repo AkuchiS/Yap at:  .github/workflows/build-macos-app.yml
+#
+# Builds the self-contained Yap.app (no Python/pipx/brew needed by the user),
+# packages it as a .dmg, and attaches it to the GitHub Release. Runs on GitHub's
+# real Apple-Silicon Mac runner.
+#
+#   * No signing secrets yet  -> ad-hoc signed .dmg (user right-clicks → Open once).
+#   * Add the secrets below    -> Developer ID signed + notarized = clean download.
+#
+# Trigger it two ways:
+#   - Publish a GitHub Release  -> the .dmg is uploaded to that release.
+#   - "Run workflow" (manual)   -> the .dmg comes out as a downloadable artifact
+#                                  (use this to test-build before cutting a release).
+name: build-macos-app
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+permissions:
+  contents: write          # upload the .dmg onto the release
+
+jobs:
+  build:
+    runs-on: macos-14      # Apple Silicon (matches modern Macs)
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"   # native deps have no 3.14 wheels yet
+
+      - name: Build the .icns icon
+        run: |
+          set -euxo pipefail
+          ICON=packaging/yap-icon-macos.png
+          WORK=$(mktemp -d); ISET="$WORK/yap.iconset"; mkdir -p "$ISET"
+          for s in 16 32 128 256 512; do
+            sips -z $s $s "$ICON" --out "$ISET/icon_${s}x${s}.png"
+            sips -z $((s*2)) $((s*2)) "$ICON" --out "$ISET/icon_${s}x${s}@2x.png"
+          done
+          iconutil -c icns "$ISET" -o "$WORK/yap.icns"
+          echo "YAP_ICNS=$WORK/yap.icns" >> "$GITHUB_ENV"
+
+      - name: Install + freeze the app
+        run: |
+          set -euxo pipefail
+          python -m pip install -U pip wheel
+          pip install ".[full]" pyinstaller pillow pyobjc-framework-ApplicationServices
+          pyinstaller packaging/yap.spec --noconfirm
+          test -d dist/Yap.app
+
+      - name: Sign (Developer ID if secrets present, else ad-hoc)
+        env:
+          CERT_P12: ${{ secrets.MACOS_CERT_P12 }}
+          CERT_PASSWORD: ${{ secrets.MACOS_CERT_PASSWORD }}
+          SIGN_IDENTITY: ${{ secrets.MACOS_SIGN_IDENTITY }}
+        run: |
+          set -euo pipefail
+          if [ -n "${CERT_P12:-}" ]; then
+            echo "→ Developer ID signing"
+            KCHAIN=build.keychain; KPW="ci-$RANDOM-$RANDOM"
+            security create-keychain -p "$KPW" "$KCHAIN"
+            security set-keychain-settings -lut 21600 "$KCHAIN"
+            security unlock-keychain -p "$KPW" "$KCHAIN"
+            echo "$CERT_P12" | base64 --decode > cert.p12
+            security import cert.p12 -k "$KCHAIN" -P "$CERT_PASSWORD" -T /usr/bin/codesign
+            security list-keychains -d user -s "$KCHAIN" login.keychain
+            security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KPW" "$KCHAIN" >/dev/null
+            codesign --force --deep --options runtime --timestamp --sign "$SIGN_IDENTITY" dist/Yap.app
+          else
+            echo "→ no signing secrets: ad-hoc sign (users right-click → Open once)"
+            codesign --force --deep --sign - dist/Yap.app || true
+          fi
+
+      - name: Package the .dmg
+        run: |
+          set -euxo pipefail
+          VER=$(python -c "import yap; print(yap.__version__)")
+          mkdir stage && cp -R dist/Yap.app stage/ && ln -s /Applications stage/Applications
+          hdiutil create -volname "Yap" -srcfolder stage -ov -format UDZO "Yap-$VER.dmg"
+          echo "DMG=Yap-$VER.dmg" >> "$GITHUB_ENV"
+
+      - name: Notarize + staple (only if notary secrets present)
+        env:
+          NOTARY_APPLE_ID: ${{ secrets.NOTARY_APPLE_ID }}
+          NOTARY_PASSWORD: ${{ secrets.NOTARY_PASSWORD }}
+          NOTARY_TEAM_ID: ${{ secrets.NOTARY_TEAM_ID }}
+        run: |
+          set -euo pipefail
+          if [ -n "${NOTARY_APPLE_ID:-}" ]; then
+            xcrun notarytool submit "$DMG" --apple-id "$NOTARY_APPLE_ID" \
+              --password "$NOTARY_PASSWORD" --team-id "$NOTARY_TEAM_ID" --wait
+            xcrun stapler staple "$DMG"
+          else
+            echo "→ no notary secrets: skipping notarization"
+          fi
+
+      - name: Attach .dmg to the release
+        if: github.event_name == 'release'
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ${{ env.DMG }}
+
+      - name: Or upload as an artifact (manual runs)
+        if: github.event_name != 'release'
+        uses: actions/upload-artifact@v4
+        with:
+          name: Yap-macos-dmg
+          path: ${{ env.DMG }}
