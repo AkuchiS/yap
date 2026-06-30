@@ -257,15 +257,6 @@ class App:
             self._log(f"yap: warmup failed: {e}", 0)
         self._status("idle")
         # optional second global hotkey: learn from your last correction
-        relearn = (self.cfg.get("hotkey") or {}).get("relearn")
-        if relearn:
-            try:
-                from pynput import keyboard
-                self._relearn_listener = keyboard.GlobalHotKeys({relearn: self.on_relearn})
-                self._relearn_listener.start()
-            except Exception as e:
-                self._log(f"yap: relearn hotkey unavailable ({e})", 2)
-
         # Control socket: lets an external trigger drive dictation. Essential on
         # Wayland (global hotkeys can't be grabbed there); harmless everywhere else.
         from . import ipc
@@ -274,7 +265,13 @@ class App:
         if is_wayland():
             self._log(_WAYLAND_HELP, 0)
 
-        listener = HotkeyListener(combo, mode, self.on_start, self.on_stop).start()
+        # ONE listener handles BOTH the dictation hotkey and relearn. Never start a
+        # second pynput listener — two concurrent ones abort the process on macOS
+        # 26 (both touch the Text Input Source API on different threads).
+        relearn = (self.cfg.get("hotkey") or {}).get("relearn")
+        listener = HotkeyListener(combo, mode, self.on_start, self.on_stop,
+                                  relearn_combo=relearn,
+                                  on_relearn=self.on_relearn).start()
         if not listener.started and not is_wayland():
             self._log(f"yap: global hotkey listener unavailable ({listener.error}). "
                       "Bind a key to `yap toggle` to dictate.", 0)

@@ -357,13 +357,26 @@ If you just want a Dock launcher fast and don't mind that permissions show under
 calls your installed yap. Good for personal use; the frozen build above is the
 one to ship.
 
-## Run it on login (other platforms)
+## Run it in the background (recommended)
 
-- **Linux** — `install/yap.service` (a user systemd unit), or add `yap run` to
-  your desktop's autostart.
-- **Windows** — a shortcut to `yap run` in the Startup folder.
+The simplest way to *just use it* — no terminal window, no menu-bar app — is a
+login agent:
 
-See [`install/`](install/) for ready-made helpers.
+```bash
+yap autostart          # runs yap in the background now + at every login
+yap autostart --off    # turn it back off
+```
+
+Then hold your hotkey and dictate, forever. (First time, grant the Python it
+points at **Input Monitoring + Accessibility** once — see below.)
+
+> **macOS note:** on macOS 26 use `yap autostart`, **not** the menu-bar `yap app`.
+> A desktop app event loop makes the keyboard library touch macOS's text-input
+> API from the wrong thread and the OS kills it; the headless background agent
+> doesn't, so it's the stable path until the signed app ships.
+
+**Other platforms:** `yap autostart` also sets up a systemd **user** service on
+Linux. Windows: add a shortcut to `yap run` in the Startup folder.
 
 ## macOS permissions (read this if the hotkey "does nothing")
 

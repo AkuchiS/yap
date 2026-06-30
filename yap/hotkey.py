@@ -51,15 +51,34 @@ def parse_combo_sigs(combo: str) -> set:
 
 
 class HotkeyListener:
+    """A SINGLE global listener for both the dictation hotkey and (optionally) the
+    relearn hotkey.
+
+    Running two pynput keyboard listeners at once is fatal on macOS 26: each one
+    queries the Text Input Source API on its own thread and the OS aborts when
+    that happens concurrently. So relearn is handled inside this one listener, not
+    a second `GlobalHotKeys`.
+    """
+
     def __init__(self, combo: str, mode: str, on_start: Callable[[], None],
-                 on_stop: Callable[[], None]):
+                 on_stop: Callable[[], None], relearn_combo: "str | None" = None,
+                 on_relearn: "Callable[[], None] | None" = None):
         self.combo = combo
         self.mode = mode
         self.on_start = on_start
         self.on_stop = on_stop
+        self.relearn_combo = relearn_combo or None
+        self.on_relearn = on_relearn
         self._listener = None
         self._active = False  # currently recording?
         self.error = None     # set if the pynput backend couldn't start (e.g. no X)
+
+    def _fire_relearn(self):
+        if self.on_relearn:
+            try:
+                self.on_relearn()
+            except Exception:
+                pass
 
     # -- toggle ---------------------------------------------------------------
     def _start_toggle(self):
@@ -73,7 +92,11 @@ class HotkeyListener:
                 self._active = True
                 self.on_start()
 
-        self._listener = keyboard.GlobalHotKeys({self.combo: toggle})
+        # ONE listener carries both hotkeys (never spin up a second one).
+        mapping = {self.combo: toggle}
+        if self.relearn_combo:
+            mapping[self.relearn_combo] = self._fire_relearn
+        self._listener = keyboard.GlobalHotKeys(mapping)
         self._listener.start()
 
     # -- hold (push-to-talk) --------------------------------------------------
@@ -81,7 +104,9 @@ class HotkeyListener:
         from pynput import keyboard
 
         expected = parse_combo_sigs(self.combo)
+        relearn_expected = parse_combo_sigs(self.relearn_combo) if self.relearn_combo else None
         pressed: set = set()
+        relearn_armed = [True]  # fire relearn once per full press, not per repeat
 
         def satisfied() -> bool:
             return expected.issubset(pressed)
@@ -103,6 +128,9 @@ class HotkeyListener:
             if satisfied() and not self._active:
                 self._active = True
                 self.on_start()
+            if relearn_expected and relearn_expected.issubset(pressed) and relearn_armed[0]:
+                relearn_armed[0] = False  # debounce until released
+                self._fire_relearn()
 
         def on_release(key):
             was = satisfied()
@@ -110,6 +138,8 @@ class HotkeyListener:
             if was and not satisfied() and self._active:
                 self._active = False
                 self.on_stop()
+            if relearn_expected and not relearn_expected.issubset(pressed):
+                relearn_armed[0] = True
 
         self._listener = keyboard.Listener(on_press=on_press, on_release=on_release)
         self._listener.start()

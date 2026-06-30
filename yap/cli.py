@@ -105,6 +105,13 @@ def _cmd_devices(_args) -> int:
     return 0
 
 
+def _cmd_autostart(args) -> int:
+    """Run yap in the background, starting at login — no terminal, no menu bar."""
+    from . import autostart
+
+    return autostart.run(off=args.off, status=args.status)
+
+
 def _cmd_toggle(_args) -> int:
     """Start/stop dictation in the running daemon over its control socket.
 
@@ -373,6 +380,12 @@ def build_parser() -> argparse.ArgumentParser:
 
     pd = sub.add_parser("devices", help="list microphone input devices")
     pd.set_defaults(func=_cmd_devices)
+
+    pas = sub.add_parser("autostart",
+                         help="run yap in the background at login (no terminal/menu-bar)")
+    pas.add_argument("--off", action="store_true", help="disable and stop it")
+    pas.add_argument("--status", action="store_true", help="show whether it's enabled")
+    pas.set_defaults(func=_cmd_autostart)
 
     ptg = sub.add_parser("toggle",
                          help="start/stop dictation in the running daemon "

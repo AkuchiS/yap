@@ -74,6 +74,32 @@ def clipboard_get() -> Optional[str]:
 
 
 # ---------------------------------------------------------------- keystrokes --
+# IMPORTANT (macOS): we must NOT synthesize keystrokes through pynput's
+# Controller here. pynput's macOS backend queries the Text Input Source (TIS)
+# API to map characters → key codes, and macOS 26 *aborts the whole process* if
+# TIS is touched from more than one thread at once — and our hotkey listener is
+# already calling it on its own thread. So on macOS we post raw Quartz key events
+# (key code, not character) which need no TIS lookup, leaving the listener as the
+# only TIS caller. On Windows/Linux pynput is fine.
+_MAC_VK_V = 9  # virtual key code for the 'V' key (used with the ⌘ flag to paste)
+
+
+def _mac_send_cmd_v() -> None:
+    """Send ⌘V via Quartz raw key events — no TIS, no pynput."""
+    import Quartz  # ships with pyobjc-framework-Quartz (a pynput macOS dep)
+
+    src = Quartz.CGEventSourceCreate(Quartz.kCGEventSourceStateHIDSystemState)
+    for down in (True, False):
+        ev = Quartz.CGEventCreateKeyboardEvent(src, _MAC_VK_V, down)
+        Quartz.CGEventSetFlags(ev, Quartz.kCGEventFlagMaskCommand)
+        Quartz.CGEventPost(Quartz.kCGHIDEventTap, ev)
+
+
+def _mac_osascript(applescript: str, *args: str) -> None:
+    """Run a tiny AppleScript in a separate process (no TIS in our process)."""
+    subprocess.run(["osascript", "-e", applescript, *args], check=True)
+
+
 def _paste_hotkey(kb) -> None:
     from pynput.keyboard import Key
 
@@ -97,13 +123,34 @@ class Injector:
             self._kb = Controller()
         return self._kb
 
+    # -- platform-safe key synthesis -----------------------------------------
+    def _send_paste(self) -> None:
+        """Send the paste shortcut. macOS uses TIS-free Quartz (see note above)."""
+        if sys.platform == "darwin":
+            try:
+                _mac_send_cmd_v()
+            except Exception:
+                # last-resort, still TIS-free: drive it via System Events
+                _mac_osascript('tell application "System Events" to '
+                               'keystroke "v" using command down')
+            return
+        _paste_hotkey(self._keyboard())
+
+    def _type_text(self, text: str) -> None:
+        if sys.platform == "darwin":
+            # argv-passed so quotes/newlines don't need escaping; no TIS in-process
+            _mac_osascript('on run a\ntell application "System Events" to '
+                           'keystroke (item 1 of a)\nend run', text)
+            return
+        self._keyboard().type(text)
+
     def inject(self, text: str) -> None:
         if not text:
             return
         if self.trailing_space and not text.endswith((" ", "\n")):
             text = text + " "
         if self.method == "type":
-            self._keyboard().type(text)
+            self._type_text(text)
             return
         self._paste(text)
 
@@ -111,14 +158,14 @@ class Injector:
         prior = clipboard_get() if self.restore_clipboard else None
         if not clipboard_set(text):
             print("yap: clipboard unavailable; falling back to typing.", file=sys.stderr)
-            self._keyboard().type(text)
+            self._type_text(text)
             return
         time.sleep(0.02)  # let the clipboard settle before pasting
         try:
-            _paste_hotkey(self._keyboard())
+            self._send_paste()
         except Exception as e:
             print(f"yap: paste keystroke failed ({e}); typing instead.", file=sys.stderr)
-            self._keyboard().type(text)
+            self._type_text(text)
             return
         if self.restore_clipboard and prior is not None:
             time.sleep(0.15)  # ensure the paste consumed the clipboard first
