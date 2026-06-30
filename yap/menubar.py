@@ -54,6 +54,23 @@ def _request_permissions() -> None:
         iokit.IOHIDRequestAccess(1)  # kIOHIDRequestTypeListenEvent (Input Monitoring)
     except Exception as e:
         print(f"yap: could not request Input Monitoring ({e})", file=sys.stderr)
+    # Microphone: opening a CoreAudio/PortAudio input stream does NOT reliably
+    # surface the TCC prompt for our app (it just records zeros), so ask
+    # AVFoundation explicitly — the same up-front pattern as the two grants above.
+    # Without this the user has no way to grant the mic (the Microphone pane has
+    # no "+" to add an app manually); the request is what creates the entry.
+    try:
+        try:
+            from AVFoundation import AVCaptureDevice, AVMediaTypeAudio
+        except Exception:
+            from AVFoundation import AVCaptureDevice
+            AVMediaTypeAudio = "soun"  # AVMediaTypeAudio constant value
+        # 0 = notDetermined → prompt; 3 = authorized (leave it alone)
+        if AVCaptureDevice.authorizationStatusForMediaType_(AVMediaTypeAudio) == 0:
+            AVCaptureDevice.requestAccessForMediaType_completionHandler_(
+                AVMediaTypeAudio, lambda _granted: None)
+    except Exception as e:
+        print(f"yap: could not request Microphone ({e})", file=sys.stderr)
 
 
 def _show_in_dock() -> None:
