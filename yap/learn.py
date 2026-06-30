@@ -24,6 +24,17 @@ from typing import Any
 
 _STRIP = " \t\n.,;:!?\"'()[]{}"
 
+# Cap how big a single learned phrase-fix can be, so a whole-sentence rewrite
+# isn't saved as one giant find/replace. Short spans are genuine corrections
+# ("post grey sequel" -> "PostgreSQL"); long ones are messy edits we ignore.
+_MAX_FIX_WORDS = 4
+_MAX_FIX_CHARS = 48
+
+
+def _phrase(words) -> str:
+    """Join a run of tokens into a clean phrase, dropping edge punctuation."""
+    return " ".join(p for p in (w.strip(_STRIP) for w in words) if p)
+
 
 def diff_corrections(old_text: str, new_text: str):
     """Compare what yap typed (`old_text`) with your corrected version (`new_text`)
@@ -33,8 +44,13 @@ def diff_corrections(old_text: str, new_text: str):
       * casings: [Word, ...]            — casing-only fixes    → vocabulary entries
 
     Aligns on lower-cased words (so casing changes don't look like replacements),
-    then takes only clean 1:1 word substitutions and casing-only differences —
-    insertions/deletions and messy multi-word edits are ignored, on purpose.
+    then learns:
+      * casing-only differences (same word, different case),
+      * clean 1:1 word substitutions, and
+      * short *phrase* substitutions where the word count changes, e.g.
+        "post grey sequel" -> "PostgreSQL" (3 words -> 1) — the single most common
+        correction, which a strict 1:1 match silently dropped.
+    Pure insertions/deletions and over-long (sentence-sized) edits are ignored.
     """
     old, new = (old_text or "").split(), (new_text or "").split()
     sm = difflib.SequenceMatcher(a=[w.lower() for w in old],
@@ -47,11 +63,20 @@ def diff_corrections(old_text: str, new_text: str):
                 o, n = ow.strip(_STRIP), nw.strip(_STRIP)
                 if o and n and o != n and o.lower() == n.lower() and n not in casings:
                     casings.append(n)
-        elif tag == "replace" and (i2 - i1) == (j2 - j1):  # clean 1:1 substitutions
-            for ow, nw in zip(old[i1:i2], new[j1:j2]):
-                o, n = ow.strip(_STRIP), nw.strip(_STRIP)
-                if o and n and o.lower() != n.lower():
-                    fixes[o.lower()] = n
+        elif tag == "replace":
+            if (i2 - i1) == (j2 - j1):  # clean 1:1 substitutions → per-word fixes
+                for ow, nw in zip(old[i1:i2], new[j1:j2]):
+                    o, n = ow.strip(_STRIP), nw.strip(_STRIP)
+                    if o and n and o.lower() != n.lower():
+                        fixes[o.lower()] = n
+            elif (i2 - i1) <= _MAX_FIX_WORDS and (j2 - j1) <= _MAX_FIX_WORDS:
+                # word count changed (e.g. 3 -> 1): learn the whole short span as a
+                # phrase fix; apply_replacements matches multi-word keys fine.
+                heard = _phrase(old[i1:i2]).lower()
+                wanted = _phrase(new[j1:j2])
+                if (heard and wanted and heard != wanted.lower()
+                        and len(heard) <= _MAX_FIX_CHARS):
+                    fixes[heard] = wanted
     return fixes, casings
 
 from .config import config_dir
