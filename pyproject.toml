@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "yap-dictation"
-version = "0.1.14"
+version = "0.1.15"
 description = "Free, offline-first, cross-platform voice dictation — speak anywhere, get text at your cursor."
 readme = "README.md"
 license = { text = "MIT" }
@@ -49,3 +49,7 @@ Issues = "https://github.com/yap-dictation/yap/issues"
 
 [tool.setuptools.packages.find]
 include = ["yap*"]
+
+[tool.setuptools.package-data]
+# ship the self-test clip inside the wheel so `yap selftest` works from a pip/pipx install
+yap = ["assets/*.wav"]

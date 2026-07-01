@@ -210,12 +210,16 @@ def _cmd_license(args) -> int:
 
 
 def _bundled_sample() -> str:
-    """Path to the built-in self-test clip (works frozen via _MEIPASS or in-repo)."""
+    """Path to the built-in self-test clip. Order: PyInstaller bundle → the packaged asset shipped
+    inside the wheel (so `yap selftest` works from a pip/pipx install) → the in-repo tests dir."""
     base = getattr(sys, "_MEIPASS", None)
     if base:
         p = os.path.join(base, "jfk.wav")
         if os.path.exists(p):
             return p
+    packaged = os.path.join(os.path.dirname(os.path.abspath(__file__)), "assets", "jfk.wav")
+    if os.path.exists(packaged):
+        return packaged
     here = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     return os.path.join(here, "tests", "jfk.wav")
 
@@ -458,7 +462,18 @@ def build_parser() -> argparse.ArgumentParser:
     return p
 
 
+def _force_utf8_stdio() -> None:
+    """Windows consoles default to cp1252 and crash on the ✓/✗/⚠ glyphs (`yap doctor` etc.).
+    Make our output UTF-8 — a no-op where it already is. Fail-soft."""
+    for stream in (sys.stdout, sys.stderr):
+        try:
+            stream.reconfigure(encoding="utf-8", errors="replace")
+        except Exception:
+            pass
+
+
 def main(argv: list[str] | None = None) -> int:
+    _force_utf8_stdio()
     parser = build_parser()
     args = parser.parse_args(argv)
     from . import licensing
